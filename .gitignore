@@ -12,6 +12,8 @@ __pycache__/
 *.key
 secrets/
 credentials/
+# SQL con secretos: cualquier archivo terminado en _LOCAL.sql
+*_LOCAL.sql
 
 # C extensions
 *.so
