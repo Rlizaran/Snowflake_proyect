@@ -1,0 +1,4 @@
+# Dependencias para extract_jc_to_stage.py
+snowflake-connector-python>=3.7
+requests>=2.31
+python-dotenv>=1.0

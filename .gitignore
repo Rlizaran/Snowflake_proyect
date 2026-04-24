@@ -3,6 +3,16 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# --- Credenciales / secretos ---
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.key
+secrets/
+credentials/
+
 # C extensions
 *.so
 
