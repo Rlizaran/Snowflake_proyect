@@ -26,18 +26,24 @@ def months(start, end):
     return out
 
 
-# Descarga el zip del mes. Devuelve la ruta o None si no existe.
+# Descarga el zip del mes probando las dos variantes de nombre que usa Citi Bike.
 def download(yyyymm, folder):
-    name = f"JC-{yyyymm}-citibike-tripdata.csv.zip"
-    r = requests.get(f"{S3_BASE}/{name}", stream=True, timeout=120)
-    if r.status_code == 404:
-        return None
-    r.raise_for_status()
-    path = folder / name
-    with open(path, "wb") as f:
-        for chunk in r.iter_content(1024 * 1024):
-            f.write(chunk)
-    return path
+    candidates = [
+        f"JC-{yyyymm}-citibike-tripdata.csv.zip",
+        f"JC-{yyyymm}-citibike-tripdata.zip",
+    ]
+    for name in candidates:
+        r = requests.get(f"{S3_BASE}/{name}", stream=True, timeout=120)
+        if r.status_code == 404:
+            r.close()
+            continue
+        r.raise_for_status()
+        path = folder / name
+        with open(path, "wb") as f:
+            for chunk in r.iter_content(1024 * 1024):
+                f.write(chunk)
+        return path
+    return None
 
 
 # Descomprime el zip y devuelve la ruta del CSV extraído sin modificarlo.
