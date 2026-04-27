@@ -1,7 +1,7 @@
 -- 02_github_integration.sql
 -- Conecta Snowflake con el repo de GitHub Rlizaran/Snowflake_proyect.
 
-USE ROLE ROLE_NYCBIKE;
+USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE WH_NYCBIKE_DEV;
 USE DATABASE WH_NYCBIKE;
 USE SCHEMA    bronze;
