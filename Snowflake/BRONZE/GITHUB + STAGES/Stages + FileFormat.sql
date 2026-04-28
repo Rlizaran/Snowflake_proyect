@@ -24,6 +24,14 @@ CREATE OR REPLACE FILE FORMAT bronze.citibike_jc_csv
   NULL_IF = ('NULL', '\\N', '')
   COMPRESSION = AUTO;
 
+CREATE OR REPLACE FILE FORMAT bronze.noaa_csv
+  TYPE = 'CSV'
+  FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+  SKIP_HEADER = 0
+  REPLACE_INVALID_CHARACTERS = TRUE
+  NULL_IF = ('NULL', '\\N', '')
+  COMPRESSION = AUTO;
+
 -- Stage externo apuntando al bucket publico de CityBike NYC
 CREATE OR REPLACE STAGE WH_NYCBIKE.BRONZE.CITIBIKE_S3_STAGE
     URL = 's3://tripdata'
@@ -33,25 +41,26 @@ CREATE OR REPLACE STAGE WH_NYCBIKE.BRONZE.CITIBIKE_S3_STAGE
 -- Ejecutar el script de Python Eso sube los JC-YYYYMM nuevos al stage interno CITIBIKE_LANDING_STAGE.
 CREATE OR REPLACE STAGE WH_NYCBIKE.BRONZE.CITIBIKE_LANDING_STAGE
     FILE_FORMAT = bronze.citibike_jc_csv
+    DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'Landing stage interno para Github';
 
 -- STAGE externo al bucket publico de NOAA by station
 CREATE OR REPLACE STAGE bronze.noaa_s3_stage_station
     URL = 's3://noaa-ghcn-pds/csv.gz/by_station/'
-    FILE_FORMAT = bronze.citibike_jc_csv
+    FILE_FORMAT = bronze.noaa_csv
     COMMENT = 'Bucket publico NOAA by station';
 
 -- STAGE externo al bucket publico de NOAA by year
 CREATE OR REPLACE STAGE bronze.noaa_s3_stage_year
     URL = 's3://noaa-ghcn-pds/csv.gz/by_year/'
-    FILE_FORMAT = bronze.citibike_jc_csv
+    FILE_FORMAT = bronze.noaa_csv
     COMMENT = 'Bucket publico NOAA by year';
 
 
+/*
+NOAA_station solo tiene hasta la mitad de 2025, asi que solo se usara el NOAA_year
 
-
-
---Comprobar que stage de NOAA es el menos pesado para cargar en nuestra tabla y guardar dichos datos
+--Comprobar que stage de NOAA es el menos pesado y cuantos anios tiene guardados para cargar en nuestra tabla y guardar dichos datos
 CREATE OR REPLACE TEMPORARY TABLE stage_size(
     name_stage            VARCHAR(256),
     size                  VARCHAR(256),
@@ -78,3 +87,4 @@ SELECT
 FROM stage_size
 GROUP BY stage
 ORDER BY total_mb DESC;
+*/

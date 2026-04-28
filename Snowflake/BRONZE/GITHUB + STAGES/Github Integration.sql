@@ -19,8 +19,6 @@ CREATE OR REPLACE GIT REPOSITORY WH_NYCBIKE.bronze.citibike_repo
   GIT_CREDENTIALS = WH_NYCBIKE.bronze.github_pat
   ORIGIN = 'https://github.com/Rlizaran/Snowflake_proyect.git';
 
--- Traer la última versión del repo
-ALTER GIT REPOSITORY WH_NYCBIKE.bronze.citibike_repo FETCH;
 
 -- Verificaciones
 SHOW GIT BRANCHES IN WH_NYCBIKE.bronze.citibike_repo;

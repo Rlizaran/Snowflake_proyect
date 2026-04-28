@@ -73,14 +73,6 @@ CREATE OR REPLACE TABLE WH_NYCBIKE.BRONZE.NOAA_RAW_YEAR (
     load_ts             TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
 
--- Stream append-only sobre CityBike NYC
-CREATE OR REPLACE STREAM bronze.stm_citibike_ny
-    ON TABLE bronze.citibike_trips_ny APPEND_ONLY = TRUE;
-
--- Stream append-only sobre CityBike Jersey City
-CREATE OR REPLACE STREAM bronze.stm_citibike_jc
-    ON TABLE bronze.citibike_trips_jc APPEND_ONLY = TRUE;
-
 -- Procedure carga incremental de CityBike NYC
 -- Copiamos los datos desde 202401 hasta el 202603 de Manhattan.
 CREATE OR REPLACE PROCEDURE BRONZE.LOAD_CITYBIKE_NY()
@@ -114,7 +106,20 @@ BEGIN
     )
     PATTERN = '2024[0-9]{2}-citibike-tripdata\\.zip|202[5-9][0-9]{2}-citibike-tripdata\\.zip'
     ON_ERROR = 'CONTINUE';
+        -- Registrar resultado en el log interno
+    INSERT INTO bronze.load_log (task_name, outcome, details)
+    SELECT 'LOAD_CITYBIKE_NY', 'OK',
+           'rows=' || COALESCE(SUM($1),0) || ' files=' || COUNT(*)
+    FROM TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)));
+
     RETURN 'Carga de datos a citybike_NY exitosa';
+
+EXCEPTION
+    -- Captura cualquier error y lo deja en el log
+    WHEN OTHER THEN
+        INSERT INTO bronze.load_log (task_name, outcome, details)
+        VALUES ('LOAD_CITYBIKE_NY', 'ERROR', :SQLERRM);
+        RAISE;
 END;
 
 -- Procedure carga incremental de CityBike JC
@@ -150,7 +155,20 @@ BEGIN
     )
     PATTERN = '.*JC-202[4-9][0-9]{2}-citibike-tripdata\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
+        -- Registrar resultado en el log interno
+    INSERT INTO bronze.load_log (task_name, outcome, details)
+    SELECT 'LOAD_CITYBIKE_JC', 'OK',
+           'rows=' || COALESCE(SUM($1),0) || ' files=' || COUNT(*)
+    FROM TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)));
+
     RETURN 'Carga de datos a citybike_JC exitosa';
+
+EXCEPTION
+    -- Captura cualquier error y lo deja en el log
+    WHEN OTHER THEN
+        INSERT INTO bronze.load_log (task_name, outcome, details)
+        VALUES ('LOAD_CITYBIKE_JC', 'ERROR', :SQLERRM);
+        RAISE;
 END;
 
 -- Procedure carga incremental de NOAA
@@ -181,24 +199,34 @@ BEGIN
     )
     PATTERN = '.*202[4-6]\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
+       -- Registrar resultado en el log interno
+    INSERT INTO bronze.load_log (task_name, outcome, details)
+    SELECT 'LOAD_NOAA_YEAR', 'OK',
+           'rows=' || COALESCE(SUM($1),0) || ' files=' || COUNT(*)
+    FROM TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)));
+
     RETURN 'Carga de datos a NOAA YEAR exitosa';
+
+EXCEPTION
+    -- Captura cualquier error y lo deja en el log
+    WHEN OTHER THEN
+        INSERT INTO bronze.load_log (task_name, outcome, details)
+        VALUES ('LOAD_NOAA_YEAR', 'ERROR', :SQLERRM);
+        RAISE;
 END;
 
 
--- Task padre -> refresh semanal de CityBike los domingos a las 3am America/New York
-CREATE OR REPLACE TASK BRONZE.TSK_BRONZE_CITYBIKE
-    WAREHOUSE = WH_NYCBIKE_DEV
-    SCHEDULE = 'USING CRON 0 3 * * 0 America/New_York'
+-- Refrescar la directory table del stage interno (run antes del task de JC)
+CREATE OR REPLACE PROCEDURE BRONZE.REFRESH_JC_STAGE()
+RETURNS STRING
+LANGUAGE SQL
 AS
 BEGIN
-    CALL BRONZE.LOAD_CITYBIKE_NY();
-    CALL BRONZE.LOAD_CITYBIKE_JC();
+    -- Refresco para que el stream detecte archivos nuevos del script Python
+    ALTER STAGE bronze.citibike_landing_stage REFRESH;
+    INSERT INTO bronze.load_log (task_name, outcome, details)
+    SELECT 'REFRESH CITYBIKE_JC STAGE', 'OK',
+           'rows=' || COALESCE(SUM($1),0) || ' files=' || COUNT(*)
+    FROM TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)));
+    RETURN 'JC landing stage refrescado';
 END;
-
--- Task hijo -> NOAA solo si los streams de CityBike traen filas nuevas
-CREATE OR REPLACE TASK BRONZE.TSK_BRONZE_NOAA
-    WAREHOUSE = WH_NYCBIKE_DEV
-    AFTER BRONZE.TSK_BRONZE_CITYBIKE
-    WHEN SYSTEM$STREAM_HAS_DATA('BRONZE.STM_CITIBIKE_NY')
-        OR SYSTEM$STREAM_HAS_DATA('BRONZE.STM_CITIBIKE_JC')
-AS CALL BRONZE.LOAD_NOAA_YEAR();

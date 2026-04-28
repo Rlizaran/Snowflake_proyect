@@ -29,3 +29,16 @@ CREATE OR REPLACE SCHEMA GOLD
 SHOW WAREHOUSES LIKE 'WH_NYCBIKE_DEV';
 SHOW DATABASES   LIKE 'WH_NYCBIKE';
 SHOW SCHEMAS IN DATABASE WH_NYCBIKE;
+
+
+
+/*
+CREATE OR REPLACE DATABASE DB_CITYBIKE_BRONZE
+    COMMENT = 'Data Base Capa Bronze datos crudos del proyecto CityBike NYC + Jersey City + NOAA Weather';
+
+CREATE OR REPLACE DATABASE DB_CITYBIKE_SILVER
+    COMMENT = 'Data Base Capa Silver del proyecto: datos limpios';
+
+CREATE OR REPLACE DATABASE DB_CITYBIKE_GOLD
+    COMMENT = 'Data Base Capa Gold del proyecto: modelos analiticos';
+*/
