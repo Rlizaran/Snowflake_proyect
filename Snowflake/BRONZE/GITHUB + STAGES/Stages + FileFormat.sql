@@ -1,14 +1,12 @@
-/*
-Creacion de FILE FORMATS y STAGES para poder cargar los datos en nuestras tablas
-*/
+-- Creacion de FILE FORMATS y STAGES en DB_CITYBIKE_BRONZE.BRONZE para cargar los datos crudos
 
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;
-USE DATABASE WH_NYCBIKE;
-USE SCHEMA    bronze;
+USE DATABASE DB_CITYBIKE_BRONZE;
+USE SCHEMA   BRONZE;
 
--- Crear File Format para evadir error de UTF8
-CREATE OR REPLACE FILE FORMAT bronze.citibike_ny_csv
+-- File Format CSV para CityBike NY (header de 3 lineas, evita error UTF8)
+CREATE OR REPLACE FILE FORMAT BRONZE.CITIBIKE_NY_CSV
   TYPE = 'CSV'
   FIELD_OPTIONALLY_ENCLOSED_BY = '"'
   SKIP_HEADER = 3
@@ -16,7 +14,8 @@ CREATE OR REPLACE FILE FORMAT bronze.citibike_ny_csv
   NULL_IF = ('NULL', '\\N', '')
   COMPRESSION = AUTO;
 
-CREATE OR REPLACE FILE FORMAT bronze.citibike_jc_csv
+-- File Format CSV para CityBike Jersey City (header simple)
+CREATE OR REPLACE FILE FORMAT BRONZE.CITIBIKE_JC_CSV
   TYPE = 'CSV'
   FIELD_OPTIONALLY_ENCLOSED_BY = '"'
   SKIP_HEADER = 1
@@ -24,7 +23,8 @@ CREATE OR REPLACE FILE FORMAT bronze.citibike_jc_csv
   NULL_IF = ('NULL', '\\N', '')
   COMPRESSION = AUTO;
 
-CREATE OR REPLACE FILE FORMAT bronze.noaa_csv
+-- File Format CSV para NOAA (sin header)
+CREATE OR REPLACE FILE FORMAT BRONZE.NOAA_CSV
   TYPE = 'CSV'
   FIELD_OPTIONALLY_ENCLOSED_BY = '"'
   SKIP_HEADER = 0
@@ -33,56 +33,54 @@ CREATE OR REPLACE FILE FORMAT bronze.noaa_csv
   COMPRESSION = AUTO;
 
 -- Stage externo apuntando al bucket publico de CityBike NYC
-CREATE OR REPLACE STAGE WH_NYCBIKE.BRONZE.CITIBIKE_S3_STAGE
+CREATE OR REPLACE STAGE DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_S3_STAGE
     URL = 's3://tripdata'
-    FILE_FORMAT = bronze.citibike_ny_csv
+    FILE_FORMAT = BRONZE.CITIBIKE_NY_CSV
     COMMENT = 'Bucket publico de CityBike NYC';
 
--- Ejecutar el script de Python Eso sube los JC-YYYYMM nuevos al stage interno CITIBIKE_LANDING_STAGE.
-CREATE OR REPLACE STAGE WH_NYCBIKE.BRONZE.CITIBIKE_LANDING_STAGE
-    FILE_FORMAT = bronze.citibike_jc_csv
+-- Stage interno (landing) para JC: el script Python sube aqui los CSV mensuales
+CREATE OR REPLACE STAGE DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_LANDING_STAGE
+    FILE_FORMAT = BRONZE.CITIBIKE_JC_CSV
     DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Landing stage interno para Github';
+    COMMENT = 'Landing stage interno para Jersey City (Python PUT)';
 
--- STAGE externo al bucket publico de NOAA by station
-CREATE OR REPLACE STAGE bronze.noaa_s3_stage_station
+-- Stage externo apuntando al bucket publico NOAA by station
+CREATE OR REPLACE STAGE DB_CITYBIKE_BRONZE.BRONZE.NOAA_S3_STAGE_STATION
     URL = 's3://noaa-ghcn-pds/csv.gz/by_station/'
-    FILE_FORMAT = bronze.noaa_csv
+    FILE_FORMAT = BRONZE.NOAA_CSV
     COMMENT = 'Bucket publico NOAA by station';
 
--- STAGE externo al bucket publico de NOAA by year
-CREATE OR REPLACE STAGE bronze.noaa_s3_stage_year
+-- Stage externo apuntando al bucket publico NOAA by year
+CREATE OR REPLACE STAGE DB_CITYBIKE_BRONZE.BRONZE.NOAA_S3_STAGE_YEAR
     URL = 's3://noaa-ghcn-pds/csv.gz/by_year/'
-    FILE_FORMAT = bronze.noaa_csv
+    FILE_FORMAT = BRONZE.NOAA_CSV
     COMMENT = 'Bucket publico NOAA by year';
 
 
 /*
 NOAA_station solo tiene hasta la mitad de 2025, asi que solo se usara el NOAA_year
 
---Comprobar que stage de NOAA es el menos pesado y cuantos anios tiene guardados para cargar en nuestra tabla y guardar dichos datos
+-- Comprobar que stage de NOAA es el menos pesado y cuantos anios tiene guardados
 CREATE OR REPLACE TEMPORARY TABLE stage_size(
-    name_stage            VARCHAR(256),
-    size                  VARCHAR(256),
-    md5_                  VARCHAR(256),
-    last_modify           VARCHAR(256)
+    name_stage    VARCHAR(256),
+    size          VARCHAR(256),
+    md5_          VARCHAR(256),
+    last_modify   VARCHAR(256)
 );
-LS @WH_NYCBIKE.BRONZE.NOAA_S3_STAGE_YEAR PATTERN = '.*(2024|2025|2026).csv.gz';
+LS @DB_CITYBIKE_BRONZE.BRONZE.NOAA_S3_STAGE_YEAR PATTERN = '.*(2024|2025|2026).csv.gz';
 INSERT INTO stage_size
-SELECT         
-    $1,$2,$3,$4
+SELECT $1,$2,$3,$4
 FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
-LS @WH_NYCBIKE.BRONZE.NOAA_S3_STAGE_STATION PATTERN = '.*(USW00094728|USW00014734)\\.csv\\.gz';
+LS @DB_CITYBIKE_BRONZE.BRONZE.NOAA_S3_STAGE_STATION PATTERN = '.*(USW00094728|USW00014734)\\.csv\\.gz';
 INSERT INTO stage_size
-SELECT         
-    $1,$2,$3,$4
+SELECT $1,$2,$3,$4
 FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
 
-SELECT     
-    CASE 
+SELECT
+    CASE
         WHEN name_stage LIKE '%by_year%'    THEN 'BY_YEAR'
         WHEN name_stage LIKE '%by_station%' THEN 'BY_STATION'
-    END                                         AS stage,
+    END AS stage,
     ROUND(SUM(size)) AS total_mb
 FROM stage_size
 GROUP BY stage

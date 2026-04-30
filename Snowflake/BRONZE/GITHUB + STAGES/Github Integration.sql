@@ -1,25 +1,23 @@
--- 02_github_integration.sql
--- Conecta Snowflake con el repo de GitHub Rlizaran/Snowflake_proyect.
+-- Conecta Snowflake con el repo de GitHub Rlizaran/Snowflake_proyect (DB_CITYBIKE_BRONZE)
 
 USE ROLE ACCOUNTADMIN;
 USE WAREHOUSE WH_NYCBIKE_DEV;
-USE DATABASE WH_NYCBIKE;
-USE SCHEMA    bronze;
+USE DATABASE DB_CITYBIKE_BRONZE;
+USE SCHEMA   BRONZE;
 
 -- API_INTEGRATION hacia GitHub (solo referencia el SECRET, no el token)
 CREATE OR REPLACE API INTEGRATION github_api_integration
   API_PROVIDER = git_https_api
   API_ALLOWED_PREFIXES  = ('https://github.com/Rlizaran/')
-  ALLOWED_AUTHENTICATION_SECRETS = (WH_NYCBIKE.bronze.github_pat)
+  ALLOWED_AUTHENTICATION_SECRETS = (DB_CITYBIKE_BRONZE.BRONZE.GITHUB_PAT)
   ENABLED = TRUE;
 
 -- GIT REPOSITORY apuntando al repo de GitHub
-CREATE OR REPLACE GIT REPOSITORY WH_NYCBIKE.bronze.citibike_repo
+CREATE OR REPLACE GIT REPOSITORY DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_REPO
   API_INTEGRATION = github_api_integration
-  GIT_CREDENTIALS = WH_NYCBIKE.bronze.github_pat
+  GIT_CREDENTIALS = DB_CITYBIKE_BRONZE.BRONZE.GITHUB_PAT
   ORIGIN = 'https://github.com/Rlizaran/Snowflake_proyect.git';
 
-
 -- Verificaciones
-SHOW GIT BRANCHES IN WH_NYCBIKE.bronze.citibike_repo;
-LS @WH_NYCBIKE.bronze.citibike_repo/branches/main/;
+SHOW GIT BRANCHES IN DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_REPO;
+LS @DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_REPO/branches/main/;

@@ -178,11 +178,14 @@ dmypy.json
 # PyPI configuration file
 .pypirc
 
-# dbt Cloud# 
+# dbt
 target/
 dbt_packages/
 logs/
+.user.yml
 
-# End of file
+# Forzar el tracking de la carpeta models/ (dbt) y sus subcarpetas
 !models/
 !models/**
+!models/.gitkeep
+!models/**/.gitkeep

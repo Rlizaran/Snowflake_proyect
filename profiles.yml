@@ -1,0 +1,17 @@
+# Profile dbt para Snowflake: target dev apunta por defecto a DB_CITYBIKE_SILVER
+# Mover a ~/.dbt/profiles.yml o exportar DBT_PROFILES_DIR=. para que dbt lo lea desde aqui
+
+snowflake_proyect:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SF_ACCOUNT') }}"
+      user: "{{ env_var('SF_USER') }}"
+      password: "{{ env_var('SF_PASSWORD') }}"
+      role: "{{ env_var('SF_ROLE', 'ROLE_NYCBIKE') }}"
+      warehouse: "{{ env_var('SF_WAREHOUSE', 'WH_NYCBIKE_DEV') }}"
+      database: "{{ env_var('SF_DATABASE', 'DB_CITYBIKE_SILVER') }}"
+      schema: "{{ env_var('SF_SCHEMA', 'SILVER') }}"
+      threads: 4
+      client_session_keep_alive: false

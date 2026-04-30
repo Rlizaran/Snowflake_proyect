@@ -28,7 +28,7 @@ flowchart TD
         STG_NOAA[NOAA_S3_STAGE_YEAR]
     end
 
-    subgraph BRONZE[BRONZE]
+    subgraph BRONZE[DB_CITYBIKE_BRONZE.BRONZE]
         T_NY[(citibike_trips_ny)]
         T_JC[(citibike_trips_jc)]
         T_NOAA[(noaa_raw_year)]
@@ -38,11 +38,11 @@ flowchart TD
         STM_NOAA{{stm_noaa_year<br/>append-only on table}}
     end
 
-    subgraph SILVER[SILVER - dbt]
+    subgraph SILVER[DB_CITYBIKE_SILVER.SILVER - dbt]
         SLV[stg_* / slv_trips / slv_weather_daily / slv_stations / slv_calendar]
     end
 
-    subgraph GOLD[GOLD - dbt]
+    subgraph GOLD[DB_CITYBIKE_GOLD.GOLD - dbt]
         GLD[dim_station / dim_date / fct_trips / fct_trips_daily]
     end
 
@@ -89,7 +89,7 @@ Antes de Chain 2 corre el script Python (Task Scheduler / GitHub Actions) que su
 
 ## Flujo end-to-end
 
-1. **Setup** — `WH_NYCBIKE_DEV`, DB `WH_NYCBIKE`, schemas BRONZE/SILVER/GOLD, rol `ROLE_NYCBIKE`, integración Git para versionar SQL.
+1. **Setup** — `WH_NYCBIKE_DEV`, 3 DBs medallion `DB_CITYBIKE_BRONZE` / `DB_CITYBIKE_SILVER` / `DB_CITYBIKE_GOLD` (schemas BRONZE/SILVER/GOLD), rol `ROLE_NYCBIKE`, integración Git para versionar SQL.
 2. **Stages** — externos a S3 público (NY, NOAA) e interno para JC.
 3. **Ingesta NY** — semanal, COPY directo desde S3 con `PATTERN`.
 4. **Ingesta JC** — Python idempotente sube los meses nuevos al landing → stream sobre stage detecta archivos → COPY → drain del stream.
@@ -105,14 +105,20 @@ Snowflake_proyect/
 ├── extract_jc_to_stage.py        # ingestor idempotente JC → landing
 ├── .env.example                   # variables de conexion Snowflake
 ├── requirements.txt
+├── dbt_project.yml                # config dbt: staging→SILVER, marts→GOLD
+├── profiles.yml                   # perfil dbt (mover a ~/.dbt/ o usar DBT_PROFILES_DIR)
+├── packages.yml                   # dependencias dbt
+├── models/                        # modelos dbt (staging = Silver, marts = Gold)
+│   ├── staging/                   # se materializan en DB_CITYBIKE_SILVER.SILVER
+│   └── marts/                     # se materializan en DB_CITYBIKE_GOLD.GOLD
 └── Snowflake/
     ├── ROLS + SETUP/
-    │   ├── Set Up Inicial.sql     # warehouses, db, schemas
+    │   ├── Set Up Inicial.sql     # warehouses + 3 DBs + schemas
     │   └── Rol.sql                # ROLE_NYCBIKE + grants
     └── BRONZE/
         ├── GITHUB + STAGES/
         │   ├── Github Integration.sql
-        │   └── Stages.sql         # file formats + stages
+        │   └── Stages + FileFormat.sql # file formats + stages
         ├── ROOT LAYER.sql         # tablas, procedures, log
         ├── Tasks + Streams.sql    # streams + tasks encadenados
         ├── Task Control.sql       # RESUME / SUSPEND / EXECUTE
