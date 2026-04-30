@@ -1,0 +1,29 @@
+version: 2
+
+sources:
+  - name: NOAA
+    database: db_citybike_bronze
+    description: Datos Crudos de NOAA
+    tables:
+      - name: noaa_raw_year
+        columns:
+          - name: station_id
+            data_type: varchar
+          - name: observation_date
+            data_type: varchar
+          - name: element
+            data_type: varchar
+          - name: data_value
+            data_type: varchar
+          - name: m_flag
+            data_type: varchar
+          - name: q_flag
+            data_type: varchar
+          - name: s_flag
+            data_type: varchar
+          - name: obs_time
+            data_type: varchar
+          - name: source_file
+            data_type: varchar
+          - name: load_ts
+            data_type: timestamp_ntz

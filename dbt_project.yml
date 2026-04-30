@@ -5,7 +5,7 @@ version: '1.0.0'
 config-version: 2
 
 # Profile que dbt usara (definido en profiles.yml)
-profile: 'snowflake_proyect'
+profile: 'default'
 
 # Snowflake suele guardar identificadores en mayusculas; sin quoting evita conflictos
 quoting:

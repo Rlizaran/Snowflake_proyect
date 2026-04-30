@@ -1,0 +1,111 @@
+version: 2
+
+sources:
+  - name: CityBike
+    database: db_citybike_bronze
+    description: 'Raw data from CityBike'
+    tables:
+      - name: citybike_trips_jc
+        columns:
+          - name: ride_id
+            data_type: varchar
+            data_tests:
+              - not_null
+              - unique
+          - name: rideable_type
+            data_type: varchar
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments: 
+                    values: ['electric_bike', 'classic_bike', 'docked_bike']
+          - name: started_at
+            data_type: varchar
+            data_tests:
+              - not_null
+          - name: ended_at
+            data_type: varchar
+          - name: start_station_name
+            data_type: varchar
+          - name: start_station_id
+            data_type: varchar
+          - name: end_station_name
+            data_type: varchar
+          - name: end_station_id
+            data_type: varchar
+          - name: start_lat
+            data_type: varchar
+          - name: start_lng
+            data_type: varchar
+          - name: end_lat
+            data_type: varchar
+          - name: end_lng
+            data_type: varchar
+          - name: member_casual
+            data_type: varchar
+            data_tests:
+              - not_null
+              - accepted_values: 
+                  arguments: 
+                    values: ['member', 'casual']
+          - name: source_file
+            data_type: varchar
+            data_tests:
+              - not_null
+          - name: load_ts
+            data_type: varchar
+            data_tests:
+              - not_null
+
+      - name: citybike_trips_ny
+        columns:
+          - name: ride_id
+            data_type: varchar
+            data_tests:
+              - not_null
+              - unique
+          - name: rideable_type
+            data_type: varchar
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments: 
+                    values: ['electric_bike', 'classic_bike', 'docked_bike']
+          - name: started_at
+            data_type: varchar
+            data_tests:
+              - not_null
+          - name: ended_at
+            data_type: varchar
+            # nullable: viaje sin fin registrado (avería, incidencia)
+          - name: start_station_name
+            data_type: varchar
+          - name: start_station_id
+            data_type: varchar
+          - name: end_station_name
+            data_type: varchar
+          - name: end_station_id
+            data_type: varchar
+          - name: start_lat
+            data_type: varchar
+          - name: start_lng
+            data_type: varchar
+          - name: end_lat
+            data_type: varchar
+          - name: end_lng
+            data_type: varchar
+          - name: member_casual
+            data_type: varchar
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments: 
+                    values: ['member', 'casual']
+          - name: source_file
+            data_type: varchar
+            data_tests:
+              - not_null
+          - name: load_ts
+            data_type: varchar
+            data_tests:
+              - not_null
