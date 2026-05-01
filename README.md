@@ -23,8 +23,8 @@ flowchart TD
     end
 
     subgraph STAGES[Stages Snowflake]
-        STG_NY[CITIBIKE_S3_STAGE]
-        STG_JC[CITIBIKE_LANDING_STAGE<br/>interno]
+        STG_NY[CITYBIKE_S3_STAGE]
+        STG_JC[CITYBIKE_LANDING_STAGE<br/>interno]
         STG_NOAA[NOAA_S3_STAGE_YEAR]
     end
 

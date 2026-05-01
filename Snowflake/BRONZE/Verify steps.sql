@@ -1,162 +1,169 @@
--- Checks de ingesta Bronze: filas por archivo, rangos, distribuciones y log (DB_CITYBIKE_BRONZE)
-
--- Conectar usuario, warehouse y database
+-- Checks de ingesta Bronze: filas por archivo, rangos, distribuciones y log
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;
 USE DATABASE DB_CITYBIKE_BRONZE;
-USE SCHEMA   BRONZE;
+
+-- Validar que los datos estan en los stages externos
+LS @DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE;
+LS @DB_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_STATION PATTERN = '.*(USW00094728|USW00014734)\\.csv\\.gz';
+
+-- Refrescar el repo de GitHub y validar el landing stage interno
+ALTER GIT REPOSITORY DB_CITYBIKE_BRONZE.CITYBIKE.CITIBIKE_REPO FETCH;
+LS @DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE;
+
+
 
 -- CityBike NY: filas por archivo
-SELECT  source_file, COUNT(*) AS num_rows
-FROM    BRONZE.CITIBIKE_TRIPS_NY
+SELECT  
+source_file,
+COUNT(*) AS num_rows
+FROM CITYBIKE.CITYBIKE_TRIPS_NY
 GROUP BY source_file
 ORDER BY source_file;
 
-
 -- CityBike NY: rango de fechas crudas y variedad de tipos
-SELECT  DISTINCT
-        MIN(STARTED_AT) AS min_start_raw,
-        MAX(started_at) AS max_start_raw,
-        rideable_type AS distinct_bike_types,
-        member_casual AS distinct_user_types
-FROM    BRONZE.CITIBIKE_TRIPS_NY
-GROUP BY MEMBER_CASUAL, RIDEABLE_TYPE;
+SELECT DISTINCT
+MIN(started_at) AS min_start_raw,
+MAX(started_at) AS max_start_raw,
+rideable_type AS distinct_bike_types,
+member_casual AS distinct_user_types
+FROM CITYBIKE.CITYBIKE_TRIPS_NY
+GROUP BY member_casual, rideable_type;
 
 -- CityBike NY: distribucion por tipo de bicicleta
-SELECT
-    rideable_type,
-    COUNT(*) AS n
-FROM    BRONZE.CITIBIKE_TRIPS_NY
+SELECT  
+rideable_type,
+COUNT(*) AS n
+FROM CITYBIKE.CITYBIKE_TRIPS_NY
 GROUP BY 1
 ORDER BY 2 DESC;
 
 -- CityBike JC: filas por archivo
-SELECT
+SELECT  
 source_file,
 COUNT(*) AS num_rows
-FROM    BRONZE.CITIBIKE_TRIPS_JC
+FROM CITYBIKE.CITYBIKE_TRIPS_JC
 GROUP BY source_file
 ORDER BY source_file;
 
 -- CityBike JC: distribucion por tipo de bicicleta
-SELECT
+SELECT  
 rideable_type,
 COUNT(*) AS n
-FROM    BRONZE.CITIBIKE_TRIPS_JC
+FROM CITYBIKE.CITYBIKE_TRIPS_JC
 GROUP BY 1
 ORDER BY 2 DESC;
 
-/*
--- NOAA: observaciones por estacion y anio
-SELECT
-    station_id,
-    LEFT(observation_date, 4)   AS yyyy,
-    COUNT(*)                    AS num_obs
-FROM DB_CITYBIKE_BRONZE.BRONZE.NOAA_RAW_STATION
-WHERE LEFT(observation_date, 4) IN ('2024', '2025', '2026')
-GROUP BY 1, 2
-UNION ALL
-SELECT
-    station_id,
-    LEFT(observation_date, 4)   AS yyyy,
-    COUNT(*)                    AS num_obs
-FROM DB_CITYBIKE_BRONZE.BRONZE.NOAA_RAW_YEAR
-WHERE LEFT(observation_date, 4) BETWEEN '2024' AND '2026'
-  AND station_id IN ('USW00094728', 'USW00094789', 'USW00014734')
-GROUP BY 1, 2
-ORDER BY 1, 2;
-*/
-
 -- NOAA: elementos meteorologicos disponibles (PRCP, TMAX, TMIN, SNOW...)
-SELECT
+SELECT 
 element,
 COUNT(*) AS num_obs
-FROM DB_CITYBIKE_BRONZE.BRONZE.NOAA_RAW_YEAR
-WHERE station_id IN ('USW00094728', 'USW00094789', 'USW00014734')
+FROM NOAA.NOAA_RAW_YEAR
+WHERE station_id IN ('USW00094728', 'USW00014734 ')
 GROUP BY 1
 ORDER BY 2 DESC;
 
 -- NOAA: rango de fechas por estacion
-SELECT
+SELECT  
 station_id,
 MIN(observation_date) AS min_date,
 MAX(observation_date) AS max_date,
-ROUND(COUNT(DISTINCT observation_date)/365,1) AS num_years
-FROM DB_CITYBIKE_BRONZE.BRONZE.NOAA_RAW_YEAR
-WHERE station_id IN ('USW00094728', 'USW00094789', 'USW00014734')
+ROUND(COUNT(DISTINCT observation_date)/365, 1) AS num_years
+FROM NOAA.NOAA_RAW_YEAR
+WHERE station_id IN ('USW00094728', 'USW00014734')
 GROUP BY 1;
 
--- Errores de COPY INTO CityBike NY en los ultimos 7 dias
-SELECT
+-- Errores de COPY INTO CityBike NY (ultimos 7 dias)
+SELECT 
 table_name,
 file_name,
 status,
 row_count,
-row_parsed,
-error_count,
-first_error_message,
+error_count, 
+first_error_message, 
 last_load_time
 FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
-            TABLE_NAME => 'BRONZE.CITIBIKE_TRIPS_NY',
+            TABLE_NAME => 'CITYBIKE.CITYBIKE_TRIPS_NY',
             START_TIME => DATEADD(day, -7, CURRENT_TIMESTAMP())))
 ORDER BY last_load_time DESC;
 
--- Errores de COPY INTO CityBike JC en los ultimos 7 dias
-SELECT
+-- Errores de COPY INTO CityBike JC (ultimos 7 dias)
+SELECT  
 table_name,
 file_name,
 status,
 row_count,
-error_count,
-first_error_message,
+error_count, 
+first_error_message, 
 last_load_time
 FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
-            TABLE_NAME => 'BRONZE.CITIBIKE_TRIPS_JC',
+            TABLE_NAME => 'CITYBIKE.CITYBIKE_TRIPS_JC',
             START_TIME => DATEADD(day, -7, CURRENT_TIMESTAMP())))
 ORDER BY last_load_time DESC;
 
--- Errores de COPY INTO NOAA en los ultimos 7 dias
+-- Errores de COPY INTO NOAA (ultimos 7 dias)
 SELECT
 table_name,
 file_name,
 status,
 row_count,
-error_count,
-first_error_message,
+error_count, 
+first_error_message, 
 last_load_time
 FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
-            TABLE_NAME => 'BRONZE.NOAA_RAW_YEAR',
+            TABLE_NAME => 'NOAA.NOAA_RAW_YEAR',
             START_TIME => DATEADD(day, -7, CURRENT_TIMESTAMP())))
 ORDER BY last_load_time DESC;
 
 -- Sanity check global: filas totales por tabla Bronze
-SELECT 'citibike_trips_ny' AS tabla, COUNT(*) AS filas FROM BRONZE.CITIBIKE_TRIPS_NY
+SELECT 'citybike_trips_ny' AS tabla, 
+COUNT(*) AS filas 
+FROM CITYBIKE.CITYBIKE_TRIPS_NY
 UNION ALL
-SELECT 'citibike_trips_jc' AS tabla, COUNT(*) AS filas FROM BRONZE.CITIBIKE_TRIPS_JC
+SELECT 'citybike_trips_jc' AS tabla,
+COUNT(*) AS filas 
+FROM CITYBIKE.CITYBIKE_TRIPS_JC
 UNION ALL
-SELECT 'NOAA_RAW_YEAR'     AS tabla, COUNT(*) AS filas FROM BRONZE.NOAA_RAW_YEAR;
+SELECT 'noaa_raw_year' AS tabla,
+COUNT(*) AS filas 
+FROM NOAA.NOAA_RAW_YEAR;
 
+-- Estado actual de los streams (data pendiente de consumir)
+SELECT 'STM_CITYBIKE_NY' AS stream, 
+SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_NY') AS has_data
+UNION ALL
+SELECT 'STM_CITYBIKE_JC' AS stream, 
+SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC') AS has_data
+UNION ALL
+SELECT 'STM_CITYBIKE_JC_STAGE' AS stream, SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC_STAGE') AS has_data
+UNION ALL
+SELECT 'STM_NOAA_YEAR' AS stream, 
+SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_NOAA_YEAR') AS has_data;
 
 -- Log interno: ultimas ejecuciones de procedures / tasks
-SELECT * FROM BRONZE.LOAD_LOG ORDER BY run_ts DESC LIMIT 20;
-
+SELECT * 
+FROM LOGS.LOAD_LOG 
+ORDER BY run_ts DESC 
+LIMIT 20;
 
 -- Verificar cuantas filas hay por mes y por ciudad
 SELECT
-    COALESCE(C.yyyymm, Y.yyyymm) AS yyyymm,
-    C.filas AS JC,
-    Y.filas AS MANHATTAN,
-    (C.filas + Y.filas) AS total
-FROM (
-    SELECT SUBSTR(source_file, 4, 6) AS yyyymm,
+COALESCE(C.yyyymm, Y.yyyymm) AS yyyymm,
+C.filas AS jc,
+Y.filas AS manhattan,
+(COALESCE(C.filas,0) + COALESCE(Y.filas,0)) AS total
+FROM(
+    SELECT 
+    SUBSTR(source_file, 4, 6) AS yyyymm,
     COUNT(*) AS filas
-    FROM DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_TRIPS_JC
+    FROM CITYBIKE.CITYBIKE_TRIPS_JC
     GROUP BY yyyymm
-) C
+    ) C
 FULL JOIN (
-    SELECT SUBSTR(source_file, 1, 6) AS yyyymm,
-    COUNT(*) AS filas
-    FROM DB_CITYBIKE_BRONZE.BRONZE.CITIBIKE_TRIPS_NY
+    SELECT 
+        SUBSTR(source_file, 1, 6) AS yyyymm,
+        COUNT(*) AS filas
+    FROM CITYBIKE.CITYBIKE_TRIPS_NY
     GROUP BY yyyymm
 ) Y
 ON C.yyyymm = Y.yyyymm
@@ -164,15 +171,31 @@ ORDER BY yyyymm;
 
 -- Conteo total de filas
 WITH counts AS (
-    SELECT 'citibike_trips_ny' AS tabla, COUNT(*) AS filas
-    FROM BRONZE.CITIBIKE_TRIPS_NY
+    SELECT 
+        'citybike_trips_ny' AS tabla, 
+        COUNT(*) AS filas
+    FROM CITYBIKE.CITYBIKE_TRIPS_NY
     UNION ALL
-    SELECT 'citibike_trips_jc' AS tabla, COUNT(*) AS filas
-    FROM BRONZE.CITIBIKE_TRIPS_JC
+    SELECT 
+        'citybike_trips_jc' AS tabla,
+        COUNT(*) AS filas 
+    FROM CITYBIKE.CITYBIKE_TRIPS_JC
     UNION ALL
-    SELECT 'NOAA_RAW_YEAR' AS tabla, COUNT(*) AS filas
-    FROM BRONZE.NOAA_RAW_YEAR
+    SELECT 
+        'noaa_raw_year' AS tabla,
+        COUNT(*) AS filas 
+    FROM NOAA.NOAA_RAW_YEAR
 )
-SELECT tabla, filas FROM counts
+SELECT 
+tabla, 
+filas 
+FROM counts
 UNION ALL
-SELECT 'Total' AS tabla, SUM(filas) FROM counts;
+SELECT 
+'Total' AS tabla,
+SUM(filas) 
+FROM counts;
+
+
+CALL DB_CITYBIKE_BRONZE.CITYBIKE.LOAD_CITYBIKE_NY();
+CALL DB_CITYBIKE_BRONZE.CITYBIKE.LOAD_CITYBIKE_JC();
