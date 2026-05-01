@@ -12,6 +12,6 @@ snowflake_proyect:
       role: "{{ env_var('SF_ROLE', 'ROLE_NYCBIKE') }}"
       warehouse: "{{ env_var('SF_WAREHOUSE', 'WH_NYCBIKE_DEV') }}"
       database: "{{ env_var('SF_DATABASE', 'DB_CITYBIKE_SILVER') }}"
-      schema: "{{ env_var('SF_SCHEMA', 'SILVER') }}"
+      schema: "{{ env_var('SF_SCHEMA', 'CITYBIKE') }}"
       threads: 4
       client_session_keep_alive: false

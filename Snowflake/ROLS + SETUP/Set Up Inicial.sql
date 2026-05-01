@@ -29,15 +29,15 @@ CREATE OR REPLACE DATABASE DB_CITYBIKE_SILVER
 CREATE OR REPLACE DATABASE DB_CITYBIKE_GOLD
     COMMENT = ' datamarts analiticos para Power BI';
 
--- Schema BRONZE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
+-- Schema LOGS dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.LOGS
     COMMENT = 'Table to keep track of the logs';
 
--- Schema BRONZE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
+-- Schema CITYBIKE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.CITYBIKE
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
 
--- Schema BRONZE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
+-- Schema NOAA dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.NOAA
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
 

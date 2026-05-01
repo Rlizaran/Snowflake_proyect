@@ -34,10 +34,14 @@ clean-targets:
 models:
   snowflake_proyect:
     staging:
-      +database: DB_CITYBIKE_SILVER
-      +schema: SILVER
       +materialized: table
+      citybike:
+        +database: DB_CITYBIKE_SILVER
+        +schema: CITYBIKE
+      noaa:
+        +database: DB_CITYBIKE_SILVER
+        +schema: NOAA
     marts:
       +database: DB_CITYBIKE_GOLD
-      +schema: GOLD
+      +schema: MARTS
       +materialized: view
