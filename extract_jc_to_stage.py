@@ -79,7 +79,7 @@ def put(conn, csv_path, stage):
 
 def main():
     load_dotenv()
-    stage = os.environ.get("SF_STAGE", "BRONZE.CITIBIKE_LANDING_STAGE")
+    stage = os.environ.get("SF_STAGE", "DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE")
     today = date.today()
     meses = months("202401", f"{today.year:04d}{today.month:02d}")
 
