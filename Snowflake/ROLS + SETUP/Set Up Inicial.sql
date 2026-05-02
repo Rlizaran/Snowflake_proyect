@@ -27,7 +27,7 @@ CREATE OR REPLACE DATABASE DB_CITYBIKE_SILVER
 
 -- Database Gold: datamarts para Power BI
 CREATE OR REPLACE DATABASE DB_CITYBIKE_GOLD
-    COMMENT = ' datamarts analiticos para Power BI';
+    COMMENT = 'datamarts analiticos para Power BI';
 
 -- Schema LOGS dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.LOGS
@@ -41,13 +41,13 @@ CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.CITYBIKE
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.NOAA
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
 
--- Schema SILVER dentro de DB_CITYBIKE_SILVER para los modelos de dbt
+-- Schema CITYBIKE dentro de DB_CITYBIKE_SILVER para los modelos staging dbt de CityBike
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_SILVER.CITYBIKE
-    COMMENT = 'Modelos dbt limpios y tipados (staging silver)';
+    COMMENT = 'Modelos dbt limpios y tipados (staging silver) - CityBike';
 
--- Schema SILVER dentro de DB_CITYBIKE_SILVER para los modelos de dbt
+-- Schema NOAA dentro de DB_CITYBIKE_SILVER para los modelos staging dbt de NOAA
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_SILVER.NOAA
-    COMMENT = 'Modelos dbt limpios y tipados (staging silver)';
+    COMMENT = 'Modelos dbt limpios y tipados (staging silver) - NOAA';
 
 -- Schema GOLD dentro de DB_CITYBIKE_GOLD para los datamarts de dbt
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_GOLD.MARTS

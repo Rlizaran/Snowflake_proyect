@@ -4,16 +4,16 @@ name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
 
-# Profile que dbt usara (definido en profiles.yml)
-profile: 'default'
+# Profile que dbt usara (debe coincidir con la llave de profiles.yml)
+profile: 'snowflake_proyect'
 
-# Snowflake suele guardar identificadores en mayusculas; sin quoting evita conflictos
+# Snowflake guarda identificadores en mayusculas; sin quoting evita conflictos
 quoting:
   database: false
   schema: false
   identifier: false
 
-# Rutas estandar de dbt; modelos en models/ se materializan segun la config de abajo
+# Rutas estandar de dbt
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]
@@ -28,17 +28,18 @@ clean-targets:
 
 
 # Configuracion por capa de la arquitectura medallion
-# - sources (Bronze) viven en DB_CITYBIKE_BRONZE.BRONZE y se declaran en models/staging/_sources.yml
-# - staging (Silver) materializa tablas en DB_CITYBIKE_SILVER
-# - marts (Gold) materializa vistas en DB_CITYBIKE_GOLD
+# - sources (Bronze) viven en DB_CITYBIKE_BRONZE.{CITYBIKE,NOAA}
+# - staging (Silver): models/staging/CityBike/* -> DB_CITYBIKE_SILVER.CITYBIKE
+#                     models/staging/NOAA/*     -> DB_CITYBIKE_SILVER.NOAA
+# - marts (Gold):     models/marts/*             -> DB_CITYBIKE_GOLD.MARTS
 models:
   snowflake_proyect:
     staging:
       +materialized: table
-      citybike:
+      CityBike:
         +database: DB_CITYBIKE_SILVER
         +schema: CITYBIKE
-      noaa:
+      NOAA:
         +database: DB_CITYBIKE_SILVER
         +schema: NOAA
     marts:

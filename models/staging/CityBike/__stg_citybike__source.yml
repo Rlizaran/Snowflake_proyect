@@ -53,7 +53,7 @@ sources:
             data_tests:
               - not_null
           - name: load_ts
-            data_type: varchar
+            data_type: timestamp_ntz
             data_tests:
               - not_null
 
@@ -106,6 +106,6 @@ sources:
             data_tests:
               - not_null
           - name: load_ts
-            data_type: varchar
+            data_type: timestamp_ntz
             data_tests:
               - not_null
