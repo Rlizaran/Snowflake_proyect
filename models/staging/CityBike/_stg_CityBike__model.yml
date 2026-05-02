@@ -1,6 +1,0 @@
-version: 2
-
-models:
-  - name: stg_citybike__citybike_trips_jc
-    description: ""
-    columns:
