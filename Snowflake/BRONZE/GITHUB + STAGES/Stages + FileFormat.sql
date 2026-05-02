@@ -1,4 +1,4 @@
--- Creacion de FILE FORMATS y STAGES en DB_CITYBIKE_BRONZE.BRONZE para cargar los datos crudos
+-- Creacion de FILE FORMATS y STAGES en DB_CITYBIKE_BRONZE (schemas CITYBIKE y NOAA) para cargar los datos crudos
 
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;

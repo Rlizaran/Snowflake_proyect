@@ -9,7 +9,7 @@ USE DATABASE DB_CITYBIKE_BRONZE;
 CREATE OR REPLACE STREAM LOGS.STM_CITYBIKE_NY
     ON TABLE CITYBIKE.CITYBIKE_TRIPS_NY APPEND_ONLY = TRUE;
 
--- Stream append-only sobre CityBike Jersey City (insert manual en demo)
+-- Stream append-only sobre CityBike Jersey City (consumo Silver)
 CREATE OR REPLACE STREAM LOGS.STM_CITYBIKE_JC
     ON TABLE CITYBIKE.CITYBIKE_TRIPS_JC APPEND_ONLY = TRUE;
 
@@ -61,8 +61,8 @@ LANGUAGE SQL
 AS
 BEGIN
     INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
-    SELECT 'STM_CITIBIKE_JC_STAGE', 'DRAIN', 'archivos_consumidos=' || COUNT(*)
-    FROM LOGS.STM_CITYBIKE_JC;
+    SELECT 'STM_CITYBIKE_JC_STAGE', 'DRAIN', 'archivos_consumidos=' || COUNT(*)
+    FROM LOGS.STM_CITYBIKE_JC_STAGE;
 
     RETURN 'Stage stream JC drenado';
 
