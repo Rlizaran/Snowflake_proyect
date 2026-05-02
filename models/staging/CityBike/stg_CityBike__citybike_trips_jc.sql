@@ -1,6 +1,4 @@
-with 
-
-source as (
+with source as (
 
     select * from {{ source('CityBike', 'citybike_trips_jc') }}
 
