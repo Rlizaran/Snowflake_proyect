@@ -1,68 +1,95 @@
--- Checks de ingesta Bronze: filas por archivo, rangos, distribuciones y log
+-- Verificacion completa de la capa Bronze: existencia, datos, errores, streams y log
+-- Organizado en 5 secciones 
+-- corre cada bloque por separado segun lo que quieras revisar
+
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;
 USE DATABASE DB_CITYBIKE_BRONZE;
 
--- Validar que los datos estan en los stages externos
-LS @DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE;
-LS @DB_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_STATION PATTERN = '.*(USW00094728|USW00014734)\\.csv\\.gz';
+-- 1. EXISTENCIA: objetos creados en cada schema
 
--- Refrescar el repo de GitHub y validar el landing stage interno
-ALTER GIT REPOSITORY DB_CITYBIKE_BRONZE.CITYBIKE.CITIBIKE_REPO FETCH;
-LS @DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE;
+-- Listar tablas, stages, file formats por schema
+SHOW TABLES IN DATABASE DB_CITYBIKE_BRONZE;
+SHOW STAGES IN DATABASE DB_CITYBIKE_BRONZE;
+SHOW FILE FORMATS IN DATABASE DB_CITYBIKE_BRONZE;
+SHOW PROCEDURES IN SCHEMA DB_CITYBIKE_BRONZE.CITYBIKE;
+SHOW PROCEDURES IN SCHEMA DB_CITYBIKE_BRONZE.NOAA;
+SHOW STREAMS IN SCHEMA DB_CITYBIKE_BRONZE.LOGS;
+SHOW TASKS IN SCHEMA DB_CITYBIKE_BRONZE.LOGS;
+
+-- Stages externos: deben listar archivos
+LS @CITYBIKE.CITYBIKE_S3_STAGE;
+LS @NOAA.NOAA_S3_STAGE_YEAR PATTERN = '.*202[4-6]\\.csv\\.gz';
+LS @CITYBIKE.CITYBIKE_LANDING_STAGE;
+
+
+-- 2. CONTEO Y CALIDAD: filas por tabla, archivo y dimensiones
+
+-- Total por tabla
+SELECT 'citybike_trips_ny' AS tabla, COUNT(*) AS filas FROM CITYBIKE.CITYBIKE_TRIPS_NY
+UNION ALL
+SELECT 'citybike_trips_jc' AS tabla, COUNT(*) AS filas FROM CITYBIKE.CITYBIKE_TRIPS_JC
+UNION ALL
+SELECT 'noaa_raw_year' AS tabla, COUNT(*) AS filas FROM NOAA.NOAA_RAW_YEAR;
 
 -- CityBike NY: filas por archivo
-SELECT  
+SELECT 
 source_file,
 COUNT(*) AS num_rows
 FROM CITYBIKE.CITYBIKE_TRIPS_NY
-GROUP BY source_file
+GROUP BY source_file 
 ORDER BY source_file;
-
--- CityBike NY: rango de fechas crudas y variedad de tipos
-SELECT DISTINCT
-MIN(started_at) AS min_start_raw,
-MAX(started_at) AS max_start_raw,
-rideable_type AS distinct_bike_types,
-member_casual AS distinct_user_types
-FROM CITYBIKE.CITYBIKE_TRIPS_NY
-GROUP BY member_casual, rideable_type;
-
--- CityBike NY: distribucion por tipo de bicicleta
-SELECT  
-rideable_type,
-COUNT(*) AS n
-FROM CITYBIKE.CITYBIKE_TRIPS_NY
-GROUP BY 1
-ORDER BY 2 DESC;
 
 -- CityBike JC: filas por archivo
-SELECT  
-source_file,
+SELECT 
+source_file, 
 COUNT(*) AS num_rows
 FROM CITYBIKE.CITYBIKE_TRIPS_JC
-GROUP BY source_file
+GROUP BY source_file 
 ORDER BY source_file;
 
--- CityBike JC: distribucion por tipo de bicicleta
-SELECT  
-rideable_type,
-COUNT(*) AS n
-FROM CITYBIKE.CITYBIKE_TRIPS_JC
-GROUP BY 1
-ORDER BY 2 DESC;
-
--- NOAA: elementos meteorologicos disponibles (PRCP, TMAX, TMIN, SNOW...)
+-- Filas por mes y por ciudad (cruce NY vs JC)
 SELECT 
-element,
-COUNT(*) AS num_obs
+COALESCE(C.yyyymm, Y.yyyymm) AS yyyymm,
+Y.filas AS manhattan, C.filas AS jc,
+(COALESCE(C.filas,0) + COALESCE(Y.filas,0)) AS total
+FROM (
+SELECT 
+    SUBSTR(source_file, 4, 6) AS yyyymm,
+    COUNT(*) AS filas 
+FROM CITYBIKE.CITYBIKE_TRIPS_JC 
+GROUP BY yyyymm
+) C
+FULL JOIN (
+SELECT 
+    SUBSTR(source_file, 1, 6) AS yyyymm,
+    COUNT(*) AS filas 
+FROM CITYBIKE.CITYBIKE_TRIPS_NY 
+GROUP BY yyyymm
+) Y
+ON C.yyyymm = Y.yyyymm
+ORDER BY yyyymm;
+
+-- CityBike NY: distribucion por tipo de bici y tipo de usuario
+SELECT 
+rideable_type, 
+member_casual,
+COUNT(*) AS n
+FROM CITYBIKE.CITYBIKE_TRIPS_NY
+GROUP BY 1, 2 
+ORDER BY 3 DESC;
+
+-- NOAA: elementos meteorologicos por estacion (Manhattan + Newark/JC)
+SELECT 
+station_id, 
+element, COUNT(*) AS num_obs
 FROM NOAA.NOAA_RAW_YEAR
 WHERE station_id IN ('USW00094728', 'USW00014734')
-GROUP BY 1
-ORDER BY 2 DESC;
+GROUP BY 1, 2 
+ORDER BY 1, 3 DESC;
 
 -- NOAA: rango de fechas por estacion
-SELECT  
+SELECT 
 station_id,
 MIN(observation_date) AS min_date,
 MAX(observation_date) AS max_date,
@@ -71,13 +98,16 @@ FROM NOAA.NOAA_RAW_YEAR
 WHERE station_id IN ('USW00094728', 'USW00014734')
 GROUP BY 1;
 
--- Errores de COPY INTO CityBike NY (ultimos 7 dias)
+
+-- 3. ERRORES DE COPY (ultimos 7 dias)
+
+-- COPY history NY
 SELECT 
 table_name,
-file_name,
+file_name, 
 status,
 row_count,
-error_count, 
+error_count,
 first_error_message, 
 last_load_time
 FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
@@ -85,12 +115,12 @@ FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
             START_TIME => DATEADD(day, -7, CURRENT_TIMESTAMP())))
 ORDER BY last_load_time DESC;
 
--- Errores de COPY INTO CityBike JC (ultimos 7 dias)
-SELECT  
+-- COPY history JC
+SELECT 
 table_name,
 file_name,
 status,
-row_count,
+row_count, 
 error_count, 
 first_error_message, 
 last_load_time
@@ -99,12 +129,11 @@ FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
             START_TIME => DATEADD(day, -7, CURRENT_TIMESTAMP())))
 ORDER BY last_load_time DESC;
 
--- Errores de COPY INTO NOAA (ultimos 7 dias)
-SELECT
-table_name,
+-- COPY history NOAA
+SELECT table_name,
 file_name,
 status,
-row_count,
+row_count, 
 error_count, 
 first_error_message, 
 last_load_time
@@ -113,83 +142,92 @@ FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.COPY_HISTORY(
             START_TIME => DATEADD(day, -7, CURRENT_TIMESTAMP())))
 ORDER BY last_load_time DESC;
 
--- Sanity check global: filas totales por tabla Bronze
-SELECT 'citybike_trips_ny' AS tabla, 
-COUNT(*) AS filas 
-FROM CITYBIKE.CITYBIKE_TRIPS_NY
-UNION ALL
-SELECT 'citybike_trips_jc' AS tabla,
-COUNT(*) AS filas 
-FROM CITYBIKE.CITYBIKE_TRIPS_JC
-UNION ALL
-SELECT 'noaa_raw_year' AS tabla,
-COUNT(*) AS filas 
-FROM NOAA.NOAA_RAW_YEAR;
+-- 4. STREAMS: data pendiente y contenido
 
--- Estado actual de los streams (data pendiente de consumir)
+-- Estado de los 4 streams (TRUE = data pendiente de consumir)
 SELECT 'STM_CITYBIKE_NY' AS stream, 
 SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_NY') AS has_data
 UNION ALL
-SELECT 'STM_CITYBIKE_JC' AS stream, 
-SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC') AS has_data
+SELECT 'STM_CITYBIKE_JC' , 
+SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC')
 UNION ALL
-SELECT 'STM_CITYBIKE_JC_STAGE' AS stream, SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC_STAGE') AS has_data
+SELECT 'STM_CITYBIKE_JC_STAGE', 
+SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC_STAGE')
 UNION ALL
-SELECT 'STM_NOAA_YEAR' AS stream, 
-SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_NOAA_YEAR') AS has_data;
+SELECT 'STM_NOAA_YEAR',
+SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_NOAA_YEAR');
 
--- Log interno: ultimas ejecuciones de procedures / tasks
+-- Contenido del stream NY (acciones pendientes)
+SELECT 
+METADATA$ACTION,
+METADATA$ISUPDATE,
+COUNT(*) AS rows_pendientes
+FROM LOGS.STM_CITYBIKE_NY
+GROUP BY 1, 2;
+
+-- Contenido del stream JC (tabla)
+SELECT 
+METADATA$ACTION,
+METADATA$ISUPDATE,
+COUNT(*) AS rows_pendientes
+FROM LOGS.STM_CITYBIKE_JC
+GROUP BY 1, 2;
+
+-- Contenido del stage stream JC (archivos detectados)
+SELECT 
+METADATA$ACTION,
+RELATIVE_PATH, 
+SIZE
+FROM LOGS.STM_CITYBIKE_JC_STAGE
+ORDER BY METADATA$ACTION, RELATIVE_PATH;
+
+-- Contenido del stream NOAA
+SELECT 
+METADATA$ACTION,
+METADATA$ISUPDATE,
+COUNT(*) AS rows_pendientes
+FROM LOGS.STM_NOAA_YEAR
+GROUP BY 1, 2;
+
+
+-- 5. TASKS: estado actual e historial
+
+-- Estado de los tasks (state = started si estan RESUME)
+SHOW TASKS IN SCHEMA DB_CITYBIKE_BRONZE.LOGS;
+
+-- Historial de ejecuciones (ultimos 7 dias)
+SELECT 
+name, 
+state, 
+scheduled_time, 
+completed_time, 
+return_value, 
+error_message
+FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.TASK_HISTORY(
+            SCHEDULED_TIME_RANGE_START => DATEADD(day, -7, CURRENT_TIMESTAMP())))
+WHERE database_name = 'DB_CITYBIKE_BRONZE'
+ORDER BY scheduled_time DESC
+LIMIT 30;
+
+-- Tasks que fallaron en los ultimos 7 dias
+SELECT 
+name, 
+scheduled_time,
+error_message
+FROM TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.TASK_HISTORY(
+            SCHEDULED_TIME_RANGE_START => DATEADD(day, -7, CURRENT_TIMESTAMP())))
+WHERE state = 'FAILED'
+ORDER BY scheduled_time DESC;
+
+-- Log interno propio
 SELECT * 
 FROM LOGS.LOAD_LOG 
-ORDER BY run_ts DESC 
-LIMIT 20;
+ORDER BY run_ts 
+DESC LIMIT 30;
 
--- Verificar cuantas filas hay por mes y por ciudad
-SELECT
-COALESCE(C.yyyymm, Y.yyyymm) AS yyyymm,
-C.filas AS jc,
-Y.filas AS manhattan,
-(COALESCE(C.filas,0) + COALESCE(Y.filas,0)) AS total
-FROM(
-    SELECT 
-    SUBSTR(source_file, 4, 6) AS yyyymm,
-    COUNT(*) AS filas
-    FROM CITYBIKE.CITYBIKE_TRIPS_JC
-    GROUP BY yyyymm
-    ) C
-FULL JOIN (
-    SELECT 
-        SUBSTR(source_file, 1, 6) AS yyyymm,
-        COUNT(*) AS filas
-    FROM CITYBIKE.CITYBIKE_TRIPS_NY
-    GROUP BY yyyymm
-) Y
-ON C.yyyymm = Y.yyyymm
-ORDER BY yyyymm;
-
--- Conteo total de filas
-WITH counts AS (
-    SELECT 
-        'citybike_trips_ny' AS tabla, 
-        COUNT(*) AS filas
-    FROM CITYBIKE.CITYBIKE_TRIPS_NY
-    UNION ALL
-    SELECT 
-        'citybike_trips_jc' AS tabla,
-        COUNT(*) AS filas 
-    FROM CITYBIKE.CITYBIKE_TRIPS_JC
-    UNION ALL
-    SELECT 
-        'noaa_raw_year' AS tabla,
-        COUNT(*) AS filas 
-    FROM NOAA.NOAA_RAW_YEAR
-)
-SELECT 
-tabla, 
-filas 
-FROM counts
-UNION ALL
-SELECT 
-'Total' AS tabla,
-SUM(filas) 
-FROM counts;
+-- Solo errores en el log
+SELECT * 
+FROM LOGS.LOAD_LOG 
+WHERE outcome = 'ERROR' 
+ORDER BY run_ts 
+DESC LIMIT 20;
