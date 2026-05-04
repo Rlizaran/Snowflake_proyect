@@ -6,108 +6,96 @@ Pipeline medallion (Bronze → Silver → Gold) sobre **Citi Bike NYC + Jersey C
 
 - **Snowflake** — ingesta, almacenamiento, orquestación (Tasks + Streams).
 - **Python** — descarga incremental de archivos JC desde S3 público y `PUT` al stage interno.
-- **dbt** — transformaciones Silver y Gold.
+- **dbt** — transformaciones Silver normalizado y Gold star schema.
 - **Power BI** — dashboards.
 
 ## Arquitectura
 
-```mermaid
-flowchart TD
-    subgraph EXT[Externo]
-        PY[extract_jc_to_stage.py<br/>idempotente: solo sube meses faltantes]
-    end
-
-    subgraph S3[S3 publico]
-        S3NY[s3://tripdata<br/>YYYYMM-citibike-tripdata.zip]
-        S3NOAA[s3://noaa-ghcn-pds<br/>by_year YYYY.csv.gz]
-    end
-
-    subgraph STAGES[Stages Snowflake]
-        STG_NY[CITYBIKE_S3_STAGE]
-        STG_JC[CITYBIKE_LANDING_STAGE<br/>interno]
-        STG_NOAA[NOAA_S3_STAGE_YEAR]
-    end
-
-    subgraph BRONZE[DB_CITYBIKE_BRONZE]
-        subgraph BRONZE_CB[CITYBIKE schema]
-            T_NY[(citybike_trips_ny)]
-            T_JC[(citybike_trips_jc)]
-        end
-        subgraph BRONZE_NOAA[NOAA schema]
-            T_NOAA[(noaa_raw_year)]
-        end
-        subgraph BRONZE_LOGS[LOGS schema]
-            LOG[(load_log)]
-            STM_NY{{stm_citybike_ny<br/>append-only on table}}
-            STM_JC_TBL{{stm_citybike_jc<br/>append-only on table}}
-            STM_JC_STG{{stm_citybike_jc_stage<br/>on stage}}
-            STM_NOAA{{stm_noaa_year<br/>append-only on table}}
-        end
-    end
-
-    subgraph SILVER[DB_CITYBIKE_SILVER - dbt]
-        SLV_CB[CITYBIKE: stg_trips_ny / stg_trips_jc]
-        SLV_NOAA[NOAA: stg_weather_daily]
-    end
-
-    subgraph GOLD[DB_CITYBIKE_GOLD.MARTS - dbt]
-        GLD[dim_station / dim_date / fct_trips / fct_trips_daily]
-    end
-
-    PBI[Power BI]
-
-    S3NY --> STG_NY --> T_NY
-    PY -- PUT --> STG_JC --> T_JC
-    S3NOAA --> STG_NOAA --> T_NOAA
-
-    T_NY --> STM_NY
-    T_JC --> STM_JC_TBL
-    STG_JC --> STM_JC_STG
-    T_NOAA --> STM_NOAA
-
-    STM_NY --> SLV_CB
-    STM_JC_TBL --> SLV_CB
-    STM_NOAA --> SLV_NOAA
-
-    SLV_CB --> GLD
-    SLV_NOAA --> GLD
-    GLD --> PBI
-
-    T_NY -.log.-> LOG
-    T_JC -.log.-> LOG
-    T_NOAA -.log.-> LOG
 ```
+DB_CITYBIKE_BRONZE                          DB_CITYBIKE_SILVER                          DB_CITYBIKE_GOLD
+  CITYBIKE                                    CITYBIKE                                    MARTS
+   citybike_trips_ny       ──cast──▶  stg_*_ny ──┐                                         fct_trips_daily
+   citybike_trips_jc       ──cast──▶  stg_*_jc ──┴──union──▶ slv_trip ────────┐            dim_station
+                                                              slv_station        \           dim_date
+                                                              slv_rideable_type   ▶ ── star ─┘
+                                                              slv_user_type      /
+                                                              slv_date          /
+   NOAA                                       NOAA                              /
+   noaa_raw_year           ──cast──▶  stg_NOAA ──▶ slv_weather_observation ──┘
+                                                  slv_weather_daily
+                                                  slv_weather_station
+                                                  slv_weather_element
+
+   LOGS
+   load_log                streams + tasks
+```
+
+## Capas
+
+### Bronze — `DB_CITYBIKE_BRONZE`
+3 tablas raw, todas en VARCHAR para preservar el dato original. Una por fuente: NY trips, JC trips, NOAA observations.
+
+### Silver — `DB_CITYBIKE_SILVER` (9 tablas)
+Casteado, limpio, normalizado en 3NF. **NY+JC unidos** en `slv_trip` para que Gold y PBI tengan una sola tabla de viajes. NOAA queda en long format normalizado (`slv_weather_observation`) + un wide pre-pivoteado (`slv_weather_daily`) para joins por fecha.
+
+| Tabla | Schema | PK | FKs | Notas |
+|---|---|---|---|---|
+| `slv_trip` | CITYBIKE | `ride_id` | `trip_date`→slv_date, `rideable_type_code`→slv_rideable_type, `user_type_code`→slv_user_type, `start_station_id`/`end_station_id`→slv_station | NY+JC unidos. Incluye `trip_duration_min` y `trip_distance_km` (great-circle WGS84) calculados en stg |
+| `slv_station` | CITYBIKE | `station_id` | — | Dedup de start+end. ~2000 rows |
+| `slv_rideable_type` | CITYBIKE | `rideable_type_code` | — | Lookup (3 rows: classic, electric, docked) |
+| `slv_user_type` | CITYBIKE | `user_type_code` | — | Lookup (2 rows: member, casual) |
+| `slv_date` | CITYBIKE | `date_id` | — | Spine 2024-01-01 → 2026-12-31 con anio, mes, dia, dia_semana, estacion, etc. |
+| `slv_weather_observation` | NOAA | `observation_id` (MD5 surrogate) | `station_id`→slv_weather_station, `observation_date`→slv_date, `element_code`→slv_weather_element | Long format. Datos en Celsius / mm (escalados desde décimas de NOAA en stg) |
+| `slv_weather_daily` | NOAA | `daily_id` (MD5 surrogate) | `station_id`→slv_weather_station, `observation_date`→slv_date | Wide pivot pre-calculado para joins por fecha |
+| `slv_weather_station` | NOAA | `station_id` | — | 2 rows: USW00094728 (Manhattan / NY) + USW00014734 (Newark / JC) |
+| `slv_weather_element` | NOAA | `element_code` | — | Lookup: TMAX, TMIN, TAVG, PRCP, SNOW, SNWD, AWND, WSF2, WSF5 |
+
+**¿Por qué surrogate keys solo en `slv_weather_*`?** Tienen PK natural compuesta `(station, date, element)` o `(station, date)`. Hash MD5 con `dbt_utils.generate_surrogate_key()` lo convierte en una sola columna → joins downstream más simples y rápidos. Las demás tablas tienen PK natural de una sola columna (`ride_id`, `station_id`, etc.).
+
+**¿Por qué `trip_distance_km` y `trip_duration_min` van en Silver y no en Gold?** Son atributos derivados a nivel fila, no KPIs. KPI = agregación (avg, sum, percentil). Atributo derivado = enriquecimiento del row. Si los pones en Gold, cada mart que los necesite los recalcularía. Una vez en Silver, Gold solo agrega.
+
+### Gold — `DB_CITYBIKE_GOLD.MARTS` (3 marts)
+Star schema desnormalizado para Power BI. Consume Silver (no Bronze).
+
+- `fct_trips_daily` — fact agregado por (`trip_date`, `city`, `rideable_type`, `member_casual`) con métricas (`num_trips`, `avg_distance_km`, etc.) y clima joineado por fecha
+- `dim_station` — vista delgada sobre `slv_station`
+- `dim_date` — vista delgada sobre `slv_date`
 
 ## Orquestación de Tasks
 
 Todos los tasks viven en `DB_CITYBIKE_BRONZE.LOGS` (mismo schema requerido por el DAG de Snowflake).
 
-```mermaid
-flowchart LR
-    subgraph C1[Chain 1 — domingos 03:00 NY]
-        A1[TSK_BRONZE_CITYBIKE<br/>LOAD_CITYBIKE_NY] --> A2{TSK_BRONZE_NOAA<br/>WHEN stm_citybike_ny OR stm_citybike_jc}
-        A2 --> A3[LOAD_NOAA_YEAR]
-    end
+```
+Chain 1 — domingos 03:00 NY
+  TSK_BRONZE_CITYBIKE  -->  LOAD_CITYBIKE_NY()
+        |
+        v (AFTER + WHEN streams_have_data)
+  TSK_BRONZE_NOAA      -->  LOAD_NOAA_YEAR()
 
-    subgraph C2[Chain 2 — dia 1 mes 17:00 NY]
-        B1[TSK_BRONZE_JC_REFRESH<br/>REFRESH_JC_STAGE] --> B2{TSK_BRONZE_JC_ONFILES<br/>WHEN stm_citybike_jc_stage}
-        B2 --> B3[LOAD_CITYBIKE_JC]
-        B3 --> B4[TSK_BRONZE_JC_DRAIN<br/>DRAIN_JC_STAGE_STREAM]
-    end
+Chain 2 — dia 1 mes 17:00 NY
+  TSK_BRONZE_JC_REFRESH       -->  REFRESH_JC_STAGE()
+        |
+        v (AFTER + WHEN stage stream)
+  TSK_BRONZE_JC_ONFILES       -->  LOAD_CITYBIKE_JC()
+        |
+        v (AFTER)
+  TSK_BRONZE_JC_DRAIN         -->  DRAIN_JC_STAGE_STREAM()
 ```
 
 Antes de Chain 2 corre el script Python (Task Scheduler / GitHub Actions) que sube al landing los meses JC faltantes.
 
 ## Flujo end-to-end
 
-1. **Setup** — `WH_NYCBIKE_DEV`, 3 DBs medallion `DB_CITYBIKE_BRONZE` / `DB_CITYBIKE_SILVER` / `DB_CITYBIKE_GOLD`. Schemas: Bronze tiene `LOGS`, `CITYBIKE`, `NOAA`; Silver tiene `CITYBIKE`, `NOAA`; Gold tiene `MARTS`. Rol `ROLE_NYCBIKE`, integración Git para versionar SQL.
+1. **Setup** — `WH_NYCBIKE_DEV`, 3 DBs medallion (Bronze/Silver/Gold), schemas LOGS/CITYBIKE/NOAA en Bronze, CITYBIKE/NOAA en Silver, MARTS en Gold, rol `ROLE_NYCBIKE`, integración Git para versionar SQL.
 2. **Stages** — externos a S3 público (NY, NOAA) e interno para JC.
 3. **Ingesta NY** — semanal, COPY directo desde S3 con `PATTERN`.
 4. **Ingesta JC** — Python idempotente sube los meses nuevos al landing → stream sobre stage detecta archivos → COPY → drain del stage stream.
 5. **Ingesta NOAA** — condicional: solo si los streams de Citi Bike traen filas nuevas.
 6. **Logging** — cada procedure escribe en `LOGS.LOAD_LOG` (rows, files, errores).
-7. **Transformación** — dbt consume las tablas Bronze como sources y materializa Silver (`DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}`) y Gold (`DB_CITYBIKE_GOLD.MARTS`).
-8. **Consumo** — Power BI sobre la capa Gold.
+7. **Transformación staging** — `dbt run` sobre `models/staging/*` → cast VARCHAR a tipos correctos + filtrado de basura (~20 filas malas en NY).
+8. **Transformación silver** — `dbt run` sobre `models/silver/*` → normalización en 9 tablas con PKs y FKs explícitas.
+9. **Transformación marts** — `dbt run` sobre `models/marts/*` → star schema final.
+10. **Consumo Power BI** — conecta a `DB_CITYBIKE_GOLD.MARTS`, modela relaciones `dim_date[date_id] → fct_trips_daily[trip_date]` y `dim_station[station_id] → fct_trips_daily[start_station_id]`.
 
 ## Estructura del repo
 
@@ -116,15 +104,40 @@ Snowflake_proyect/
 ├── extract_jc_to_stage.py        # ingestor idempotente JC → landing
 ├── .env.example                   # variables de conexion Snowflake
 ├── requirements.txt
-├── dbt_project.yml                # config dbt: staging→SILVER.{CITYBIKE,NOAA}, marts→GOLD.MARTS
+├── dbt_project.yml                # config dbt: staging, silver, marts
 ├── profiles.yml                   # perfil dbt (mover a ~/.dbt/ o usar DBT_PROFILES_DIR)
-├── packages.yml                   # dependencias dbt
-├── models/                        # modelos dbt
-│   ├── staging/                   # se materializan en DB_CITYBIKE_SILVER (citybike/, noaa/)
-│   └── marts/                     # se materializan en DB_CITYBIKE_GOLD.MARTS
+├── packages.yml                   # dependencias dbt (dbt_utils, codegen, dbt_expectations)
+├── macros/
+│   └── generate_database_name.sql
+├── models/
+│   ├── staging/
+│   │   ├── CityBike/
+│   │   │   ├── __stg_citybike__source.yml
+│   │   │   ├── stg_CityBike__citybike_trips_ny.sql
+│   │   │   └── stg_CityBike__citybike_trips_jc.sql
+│   │   └── NOAA/
+│   │       ├── __stg_NOAA__source.yml
+│   │       └── stg_NOAA__noaa_raw_year.sql
+│   ├── silver/
+│   │   ├── __silver_models.yml
+│   │   ├── CityBike/
+│   │   │   ├── slv_trip.sql
+│   │   │   ├── slv_station.sql
+│   │   │   ├── slv_rideable_type.sql
+│   │   │   ├── slv_user_type.sql
+│   │   │   └── slv_date.sql
+│   │   └── NOAA/
+│   │       ├── slv_weather_observation.sql
+│   │       ├── slv_weather_daily.sql
+│   │       ├── slv_weather_station.sql
+│   │       └── slv_weather_element.sql
+│   └── marts/
+│       ├── fct_trips_daily.sql
+│       ├── dim_station.sql
+│       └── dim_date.sql
 └── Snowflake/
     ├── ROLS + SETUP/
-    │   ├── Set Up Inicial.sql     # warehouses + 3 DBs + schemas
+    │   ├── Set Up Inicial.sql     # warehouses + 3 DBs + schemas (LOGS/CITYBIKE/NOAA + CITYBIKE/NOAA + MARTS)
     │   └── Rol.sql                # ROLE_NYCBIKE + grants
     └── BRONZE/
         ├── GITHUB + STAGES/
@@ -144,6 +157,7 @@ Snowflake_proyect/
 - **`ON_ERROR='CONTINUE'`** — un archivo malo no rompe el batch.
 - **EXCEPTION handlers** — cualquier error queda registrado en `LOGS.LOAD_LOG`.
 - **Drain del stage stream JC** — evita que el `WHEN` quede permanentemente TRUE.
+- **dbt tests** — relationships entre slv_* validan integridad referencial; uniqueness en PKs garantiza no duplicados.
 
 ## Configuración rápida
 
@@ -154,4 +168,14 @@ pip install -r requirements.txt
 python extract_jc_to_stage.py
 ```
 
-Orden de ejecución del SQL: `Set Up Inicial → Rol → Github Secret → Github Integration → Stages + FileFormat → ROOT LAYER → Tasks + Streams → Task Control`.
+Orden de ejecución del SQL:
+`Set Up Inicial → Rol → Github Secret → Github Integration → Stages + FileFormat → ROOT LAYER → Tasks + Streams → Task Control`
+
+Después en dbt:
+```bash
+dbt deps                              # instala dbt_utils, codegen, dbt_expectations
+dbt run --select staging.*            # cast + clean
+dbt run --select silver.*             # normalización
+dbt run --select marts.*              # star schema
+dbt test                              # valida PKs, FKs, accepted_values
+```

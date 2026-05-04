@@ -1,29 +1,59 @@
 version: 2
 
+# Sources: tablas Bronze del schema NOAA en DB_CITYBIKE_BRONZE
 sources:
   - name: NOAA
-    database: db_citybike_bronze
-    description: Datos Crudos de NOAA
+    database: DB_CITYBIKE_BRONZE
+    schema: NOAA
+    description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC)'
+    loaded_at_field: load_ts
+    freshness:
+      warn_after: { count: 14, period: day }
+      error_after: { count: 30, period: day }
+
     tables:
       - name: noaa_raw_year
+        description: 'Observaciones meteorologicas raw en formato long: una fila por (station, fecha, elemento)'
         columns:
           - name: station_id
+            description: 'ID de la estacion meteorologica (USW00094728=Manhattan, USW00014734=Newark/JC)'
             data_type: varchar
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
           - name: observation_date
+            description: 'Fecha de la observacion en formato YYYYMMDD (varchar bronze)'
             data_type: varchar
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
           - name: element
+            description: 'Codigo del elemento medido (TMAX, TMIN, PRCP, SNOW, etc.)'
             data_type: varchar
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
           - name: data_value
+            description: 'Valor de la observacion en decimas de unidad (TMAX/TMIN/TAVG en decimas de C, PRCP en decimas de mm)'
             data_type: varchar
           - name: m_flag
+            description: 'Measurement flag'
             data_type: varchar
           - name: q_flag
+            description: 'Quality flag (no nulo = observacion sospechosa)'
             data_type: varchar
           - name: s_flag
+            description: 'Source flag'
             data_type: varchar
           - name: obs_time
+            description: 'Hora de la observacion (HHMM, opcional)'
             data_type: varchar
           - name: source_file
+            description: 'Nombre del archivo NOAA por anio'
             data_type: varchar
           - name: load_ts
+            description: 'Timestamp de carga a Snowflake'
             data_type: timestamp_ntz

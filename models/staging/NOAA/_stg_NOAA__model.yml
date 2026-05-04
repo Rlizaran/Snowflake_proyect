@@ -1,0 +1,97 @@
+version: 2
+
+models:
+  - name: slv_weather_observation
+    description: 'Fact NOAA en long format: una observacion por (station, date, element). Surrogate key MD5 sobre las 3 cols.'
+    columns:
+      - name: observation_id
+        description: 'Surrogate PK (hash MD5 de station_id + observation_date + element_code)'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: station_id
+        description: 'FK a slv_weather_station'
+        data_tests:
+          - relationships:
+              arguments:
+                to:    ref('slv_weather_station')
+                field: station_id
+      - name: observation_date
+        description: 'FK a slv_date'
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to:    ref('slv_date')
+                field: date_id
+      - name: element_code
+        description: 'FK a slv_weather_element'
+        data_tests:
+          - relationships:
+              arguments:
+                to:    ref('slv_weather_element')
+                field: element_code
+      - name: data_value
+      - name: q_flag
+
+  - name: slv_weather_daily
+    description: 'Wide pivot pre-agregado: un row por (station_id, date) con TMAX/TMIN/PRCP/SNOW. Surrogate key.'
+    columns:
+      - name: daily_id
+        description: 'Surrogate PK (hash MD5 de station_id + observation_date)'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: station_id
+        data_tests:
+          - relationships:
+              arguments:
+                to:    ref('slv_weather_station')
+                field: station_id
+      - name: observation_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to:    ref('slv_date')
+                field: date_id
+      - name: city
+      - name: temp_max_c
+      - name: temp_min_c
+      - name: temp_avg_c
+      - name: precipitation_mm
+      - name: snowfall_mm
+      - name: snow_depth_mm
+      - name: weather_category
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+
+  - name: slv_weather_station
+    description: 'Dimension de estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC)'
+    columns:
+      - name: station_id
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: station_name
+      - name: city
+        data_tests:
+          - accepted_values: { arguments: { values: ['NY','JC'] } }
+      - name: lat
+      - name: lng
+      - name: state
+      - name: elevation_m
+
+  - name: slv_weather_element
+    description: 'Lookup: elementos meteorologicos NOAA GHCN-Daily (TMAX, TMIN, PRCP, etc.)'
+    columns:
+      - name: element_code
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: description
+      - name: unit
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['celsius','mm','m/s'] }
