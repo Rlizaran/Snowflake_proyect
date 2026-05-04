@@ -32,6 +32,6 @@ select
         when month(date_day) in (12,1,2) then 'Invierno'
         when month(date_day) in (3,4,5)  then 'Primavera'
         when month(date_day) in (6,7,8)  then 'Verano'
-        else                                  'Otono'
+        else 'Otono'
     end as season
 from date_spine
