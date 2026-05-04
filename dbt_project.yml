@@ -1,10 +1,10 @@
-# dbt project: transforma DB_CITYBIKE_BRONZE -> DB_CITYBIKE_SILVER (staging) -> DB_CITYBIKE_GOLD (marts)
+# dbt project: Bronze (sources) -> staging (cast 1:1) -> silver (normalizado, FKs) -> marts (Gold star schema)
 
 name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
 
-# Profile que dbt usara (debe coincidir con la llave de profiles.yml)
+# Profile que dbt usara (debe coincidir con la llave en profiles.yml)
 profile: 'snowflake_proyect'
 
 # Snowflake guarda identificadores en mayusculas; sin quoting evita conflictos
@@ -28,12 +28,13 @@ clean-targets:
 
 
 # Configuracion por capa de la arquitectura medallion
-# - sources (Bronze) viven en DB_CITYBIKE_BRONZE.{CITYBIKE,NOAA}
-# - staging (Silver): models/staging/CityBike/* -> DB_CITYBIKE_SILVER.CITYBIKE
-#                     models/staging/NOAA/*     -> DB_CITYBIKE_SILVER.NOAA
-# - marts (Gold):     models/marts/*             -> DB_CITYBIKE_GOLD.MARTS
+# - sources (Bronze)        : DB_CITYBIKE_BRONZE.{CITYBIKE,NOAA}                          (raw VARCHAR)
+# - staging (cast 1:1)      : models/staging/<dominio>/* -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}
+# - silver (normalizado)    : models/silver/<dominio>/*  -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}  (PKs + FKs + slv_date)
+# - marts (Gold)            : models/marts/*             -> DB_CITYBIKE_GOLD.MARTS              (star schema, agregaciones)
 models:
   snowflake_proyect:
+
     staging:
       +materialized: table
       CityBike:
@@ -44,7 +45,20 @@ models:
       NOAA:
         +database: DB_CITYBIKE_SILVER
         +schema: NOAA
+<<<<<<< HEAD
         +snowflake_warehouse: WH_ANALISIS
+=======
+
+    silver:
+      +materialized: table
+      CityBike:
+        +database: DB_CITYBIKE_SILVER
+        +schema: CITYBIKE
+      NOAA:
+        +database: DB_CITYBIKE_SILVER
+        +schema: NOAA
+
+>>>>>>> 347755d6f9545604229551bc9293a2c930d9d8df
     marts:
       +database: DB_CITYBIKE_GOLD
       +schema: MARTS

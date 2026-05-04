@@ -1,0 +1,115 @@
+version: 2
+
+models:
+  - name: slv_trip
+    description: 'Fact normalizado: un row por viaje (NY+JC unidos), con FKs explicitas y atributos derivados (duracion, distancia)'
+    columns:
+      - name: ride_id
+        description: 'PK natural del viaje (Citi Bike garantiza unicidad)'
+        data_tests:
+          - unique:
+              config: { severity: error }
+          - not_null:
+              config: { severity: error }
+      - name: trip_date
+        description: 'FK a slv_date (date(started_at))'
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to:    ref('slv_date')
+                field: date_id
+      - name: started_at
+        data_tests: [not_null]
+      - name: ended_at
+      - name: trip_duration_min
+        description: 'Minutos entre started_at y ended_at (derivado en stg)'
+      - name: trip_distance_km
+        description: 'Great-circle distance start->end en km (derivado en stg)'
+      - name: rideable_type_code
+        description: 'FK a slv_rideable_type'
+        data_tests:
+          - relationships:
+              arguments:
+                to:    ref('slv_rideable_type')
+                field: rideable_type_code
+      - name: user_type_code
+        description: 'FK a slv_user_type'
+        data_tests:
+          - relationships:
+              arguments:
+                to:    ref('slv_user_type')
+                field: user_type_code
+      - name: start_station_id
+        description: 'FK a slv_station (origen del viaje)'
+      - name: end_station_id
+        description: 'FK a slv_station (destino del viaje)'
+      - name: city
+        description: 'Ciudad de origen del dataset (NY o JC)'
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['NY','JC'] }
+
+  - name: slv_station
+    description: 'Dimension de estaciones CityBike deduplicada (start + end union)'
+    columns:
+      - name: station_id
+        description: 'PK natural de la estacion'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: station_name
+      - name: lat
+      - name: lng
+      - name: city
+        data_tests:
+          - accepted_values: { arguments: { values: ['NY','JC'] } }
+      - name: first_seen
+      - name: last_seen
+      - name: num_appearances
+
+  - name: slv_rideable_type
+    description: 'Lookup: tipos de bicicleta CityBike (3 valores)'
+    columns:
+      - name: rideable_type_code
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+          - accepted_values:
+              arguments: { values: ['classic_bike','electric_bike','docked_bike'] }
+      - name: description
+      - name: is_electric
+      - name: is_legacy
+
+  - name: slv_user_type
+    description: 'Lookup: tipos de usuario CityBike (member, casual)'
+    columns:
+      - name: user_type_code
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+          - accepted_values:
+              arguments: { values: ['member','casual'] }
+      - name: description
+      - name: is_subscriber
+
+  - name: slv_date
+    description: 'Fechas 2024-2026 con atributos calendario (anio, mes, dia, semana, estacion, etc.)'
+    columns:
+      - name: date_id
+        description: 'PK: la fecha'
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+      - name: year
+      - name: quarter
+      - name: month
+      - name: month_name
+      - name: year_month
+      - name: day_of_month
+      - name: day_of_week
+      - name: day_name
+      - name: is_weekend
+      - name: week_of_year
+      - name: day_of_year
+      - name: season
