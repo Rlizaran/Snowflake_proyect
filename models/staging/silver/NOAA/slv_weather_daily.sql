@@ -21,10 +21,10 @@ select
     s.city,
 
     -- Metricas pivoteadas (todas en grados Celsius o mm, ya escaladas en stg)
-    max(case when o.element_code = 'TMAX' then o.data_value end)/10 as temp_max_c,
-    max(case when o.element_code = 'TMIN' then o.data_value end)/10 as temp_min_c,
-    max(case when o.element_code = 'TAVG' then o.data_value end)/10 as temp_avg_c,
-    max(case when o.element_code = 'PRCP' then o.data_value end)/10 as precipitation_mm,
+    round(max(case when o.element_code = 'TMAX' then o.data_value end)/10,2) as temp_max_c,
+    round(max(case when o.element_code = 'TMIN' then o.data_value end)/10,2) as temp_min_c,
+    round(max(case when o.element_code = 'TAVG' then o.data_value end)/10,2) as temp_avg_c,
+    round(max(case when o.element_code = 'PRCP' then o.data_value end)/10,2) as precipitation_mm,
     max(case when o.element_code = 'SNOW' then o.data_value end) as snowfall_mm,
     max(case when o.element_code = 'SNWD' then o.data_value end) as snow_depth_mm,
 
@@ -36,6 +36,6 @@ select
         when max(case when o.element_code = 'TMAX' then o.data_value end) < 5  then 'cold'
         else 'mild'
     end as weather_category
-from   obs o
-join   stations s on o.station_id = s.station_id
+from obs o
+join stations s on o.station_id = s.station_id
 group by o.station_id, o.observation_date, s.city
