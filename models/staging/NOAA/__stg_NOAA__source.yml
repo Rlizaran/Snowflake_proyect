@@ -6,10 +6,12 @@ sources:
     database: DB_CITYBIKE_BRONZE
     schema: NOAA
     description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC)'
-    loaded_at_field: load_ts
-    freshness:
-      warn_after: { count: 14, period: day }
-      error_after: { count: 30, period: day }
+    
+    config:
+      freshness:
+        warn_after: {count: 30, period: day}
+        error_after: {count: 40, period: day}
+      loaded_at_field: load_ts
 
     tables:
       - name: noaa_raw_year
