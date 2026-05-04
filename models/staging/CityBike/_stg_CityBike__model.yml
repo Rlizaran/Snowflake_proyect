@@ -69,17 +69,16 @@ models:
       - name: num_appearances
 
   - name: slv_rideable_type
-    description: 'Lookup: tipos de bicicleta CityBike (3 valores)'
+    description: 'Lookup: tipos de bicicleta CityBike'
     columns:
       - name: rideable_type_code
         data_tests:
           - unique: { config: { severity: error } }
           - not_null
           - accepted_values:
-              arguments: { values: ['classic_bike','electric_bike','docked_bike'] }
+              arguments: { values: ['classic_bike','electric_bike'] }
       - name: description
       - name: is_electric
-      - name: is_legacy
 
   - name: slv_user_type
     description: 'Lookup: tipos de usuario CityBike (member, casual)'

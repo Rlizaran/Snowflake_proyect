@@ -28,10 +28,10 @@ clean-targets:
 
 
 # Configuracion por capa de la arquitectura medallion
-# - sources (Bronze)        : DB_CITYBIKE_BRONZE.{CITYBIKE,NOAA}                          (raw VARCHAR)
-# - staging (cast 1:1)      : models/staging/<dominio>/* -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}
-# - silver (normalizado)    : models/silver/<dominio>/*  -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}  (PKs + FKs + slv_date)
-# - marts (Gold)            : models/marts/*             -> DB_CITYBIKE_GOLD.MARTS              (star schema, agregaciones)
+# - sources (Bronze): DB_CITYBIKE_BRONZE.{CITYBIKE,NOAA}(raw VARCHAR)
+# - staging (cast 1:1): models/staging/<dominio>/* -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}
+# - silver (normalizado): models/silver/<dominio>/*  -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}(PKs + FKs + slv_date)
+# - marts (Gold): models/marts/*-> DB_CITYBIKE_GOLD.MARTS(star schema, agregaciones)
 models:
   snowflake_proyect:
 

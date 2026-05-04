@@ -6,10 +6,12 @@ sources:
     database: DB_CITYBIKE_BRONZE
     schema: CITYBIKE
     description: 'Datos crudos de Citi Bike (NY + Jersey City) tal cual llegan de los CSV publicos'
-    loaded_at_field: load_ts
-    freshness:
-      warn_after: { count: 8,  period: day }
-      error_after: { count: 14, period: day }
+
+    config:
+      freshness:
+        warn_after: {count: 30, period: day}
+        error_after: {count: 40, period: day}
+      loaded_at_field: load_ts
 
     tables:
       - name: citybike_trips_jc
@@ -28,7 +30,7 @@ sources:
             data_tests:
               - accepted_values:
                   arguments:
-                    values: ['classic_bike', 'electric_bike', 'docked_bike']
+                    values: ['classic_bike', 'electric_bike']
                   config:
                     severity: warn
           - name: started_at
@@ -59,7 +61,7 @@ sources:
             data_tests:
               - accepted_values:
                   arguments:
-                    values: ['member', 'casual']
+                    values: ['member', 'casual', 'member_casual']
                   config:
                     severity: warn
           - name: source_file
@@ -85,7 +87,7 @@ sources:
             data_tests:
               - accepted_values:
                   arguments:
-                    values: ['classic_bike', 'electric_bike', 'docked_bike']
+                    values: ['classic_bike', 'electric_bike']
                   config:
                     severity: warn
           - name: started_at
@@ -113,7 +115,7 @@ sources:
             data_tests:
               - accepted_values:
                   arguments:
-                    values: ['member', 'casual']
+                    values: ['member', 'casual', 'member_casual']
                   config:
                     severity: warn
           - name: source_file

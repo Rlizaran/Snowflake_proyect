@@ -17,15 +17,10 @@ select
     case rideable_type
         when 'classic_bike' then 'Bicicleta clasica (mecanica)'
         when 'electric_bike' then 'Bicicleta electrica con asistencia'
-        when 'docked_bike' then 'Bicicleta clasica (legacy, antes de 2023)'
         else 'Desconocido'
     end as description,
     case rideable_type
         when 'electric_bike' then true
         else false
-    end as is_electric,
-    case rideable_type
-        when 'docked_bike' then true
-        else false
-    end as is_legacy
+    end as is_electric
 from distinct_types
