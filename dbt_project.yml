@@ -45,9 +45,6 @@ models:
       NOAA:
         +database: DB_CITYBIKE_SILVER
         +schema: NOAA
-<<<<<<< HEAD
-        +snowflake_warehouse: WH_ANALISIS
-=======
 
     silver:
       +materialized: table
@@ -57,8 +54,6 @@ models:
       NOAA:
         +database: DB_CITYBIKE_SILVER
         +schema: NOAA
-
->>>>>>> 347755d6f9545604229551bc9293a2c930d9d8df
     marts:
       +database: DB_CITYBIKE_GOLD
       +schema: MARTS
