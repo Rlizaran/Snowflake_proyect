@@ -6,7 +6,7 @@ sources:
     database: DB_CITYBIKE_BRONZE
     schema: NOAA
     description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC)'
-    
+
     config:
       freshness:
         warn_after: {count: 30, period: day}
@@ -39,7 +39,7 @@ sources:
                   config:
                     severity: warn
           - name: data_value
-            description: 'Valor de la observacion en decimas de unidad (TMAX/TMIN/TAVG en decimas de C, PRCP en decimas de mm)'
+            description: 'Valor de la observacion en decimas de unidad (TMAX/TMIN/TAVG en decimas de C, PRCP en mm)'
             data_type: varchar
           - name: m_flag
             description: 'Measurement flag'
@@ -51,7 +51,7 @@ sources:
             description: 'Source flag'
             data_type: varchar
           - name: obs_time
-            description: 'Hora de la observacion (HHMM, opcional)'
+            description: 'Hora de la observacion (HHMMSS)'
             data_type: varchar
           - name: source_file
             description: 'Nombre del archivo NOAA por anio'

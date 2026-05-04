@@ -9,14 +9,14 @@ source as (
 renamed as (
 
     select
-        station_id,
-        observation_date,
-        element,
-        data_value,
-        m_flag,
-        q_flag,
-        s_flag,
-        obs_time,
+        trim(station_id) as station_id,
+        to_date(observation_date, 'YYYYMMDD') as observation_date,
+        trim(element) as element,
+        try_to_decimal(data_value, 18, 2) as data_value,
+        trim(m_flag) as m_flag,
+        trim(q_flag) as q_flag,
+        trim(s_flag) as s_flag,
+        try_to_time(obs_time, 'HH24MI') as obs_time,
         source_file,
         load_ts
 
