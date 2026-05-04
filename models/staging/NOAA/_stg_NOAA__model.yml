@@ -14,7 +14,7 @@ models:
         data_tests:
           - relationships:
               arguments:
-                to:    ref('slv_weather_station')
+                to: ref('slv_weather_station')
                 field: station_id
       - name: observation_date
         description: 'FK a slv_date'
@@ -29,7 +29,7 @@ models:
         data_tests:
           - relationships:
               arguments:
-                to:    ref('slv_weather_element')
+                to: ref('slv_weather_element')
                 field: element_code
       - name: data_value
       - name: q_flag
@@ -46,14 +46,14 @@ models:
         data_tests:
           - relationships:
               arguments:
-                to:    ref('slv_weather_station')
+                to: ref('slv_weather_station')
                 field: station_id
       - name: observation_date
         data_tests:
           - not_null
           - relationships:
               arguments:
-                to:    ref('slv_date')
+                to: ref('slv_date')
                 field: date_id
       - name: city
       - name: temp_max_c
