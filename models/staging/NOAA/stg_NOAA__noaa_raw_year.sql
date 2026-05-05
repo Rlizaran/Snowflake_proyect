@@ -1,3 +1,9 @@
+{{
+  config(
+    snowflake_warehouse='WH_ANALISIS'
+  )
+}}
+
 with 
 
 source as (
@@ -16,7 +22,7 @@ renamed as (
         trim(m_flag) as m_flag,
         trim(q_flag) as q_flag,
         trim(s_flag) as s_flag,
-        try_to_time(obs_time, 'HH24MI') as obs_time,
+        obs_time,
         source_file,
         load_ts
 
@@ -31,7 +37,7 @@ cleaned as (
     where station_id in ('USW00094728', 'USW00014734')
       and observation_date >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
       and element in ('TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND', 'SNWD', 'WSF2', 'WSF5')
-
+      and obs_time is not null
 )
 
 select * from cleaned

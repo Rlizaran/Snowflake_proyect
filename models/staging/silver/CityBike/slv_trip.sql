@@ -3,7 +3,8 @@
   config(
     materialized='incremental',
     unique_key='ride_id',
-    incremental_strategy='merge'
+    incremental_strategy='delete+insert',
+    snowflake_warehouse='WH_ANALISIS'
   )
 }}
 
@@ -25,7 +26,7 @@ unioned as (
 
 deduplicated as (
     select * from unioned
-    row_number() over (
+    qualify row_number() over (
         partition by ride_id 
         order by load_ts desc, started_at desc
     ) = 1
