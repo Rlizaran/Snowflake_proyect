@@ -22,6 +22,16 @@ renamed as (
 
     from source
 
+),
+
+cleaned as (
+    select
+        *
+    from renamed
+    where station_id in ('USW00094728', 'USW00014734')
+      and observation_date >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
+      and element in ('TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND', 'SNWD', 'WSF2', 'WSF5')
+
 )
 
-select * from renamed
+select * from cleaned
