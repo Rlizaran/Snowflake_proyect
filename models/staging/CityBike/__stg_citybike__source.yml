@@ -61,7 +61,7 @@ sources:
             data_tests:
               - accepted_values:
                   arguments:
-                    values: ['member', 'casual', 'member_casual']
+                    values: ['member', 'casual']
                   config:
                     severity: warn
           - name: source_file
@@ -115,7 +115,7 @@ sources:
             data_tests:
               - accepted_values:
                   arguments:
-                    values: ['member', 'casual', 'member_casual']
+                    values: ['member', 'casual']
                   config:
                     severity: warn
           - name: source_file

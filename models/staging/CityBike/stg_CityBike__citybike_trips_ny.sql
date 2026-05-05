@@ -33,10 +33,11 @@ cleaned as (
     from casted
     where ride_id is not null
       and started_at is not null
+      and started_at >= '2024-01-01'::timestamp_ntz
       and ended_at is not null
       and ended_at > started_at
-      and rideable_type in ('classic_bike', 'electric_bike', 'docked_bike', 'rideable_type')
-      and member_casual in ('member', 'casual', 'member_casual')
+      and rideable_type in ('%classic_bike%', '%electric_bike%')
+      and member_casual in ('%member%', '%casual%')
 ),
 
 enriched as (
