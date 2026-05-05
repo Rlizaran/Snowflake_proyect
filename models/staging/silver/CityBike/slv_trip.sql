@@ -1,4 +1,11 @@
 -- Silver fact normalizado: un row por viaje (NY+JC unidos), con FKs explicitas a estaciones, tipos y fecha
+{{
+  config(
+    materialized='incremental',
+    unique_key='ride_id',
+    incremental_strategy='merge'
+  )
+}}
 
 with
 
@@ -14,6 +21,15 @@ unioned as (
     select * from ny
     union all
     select * from jc
+),
+
+deduplicated as (
+    select * from unioned
+    -- Esta es la clave: Snowflake solo verá una fila por ride_id para el merge
+    qualify row_number() over (
+        partition by ride_id 
+        order by load_ts desc, started_at desc
+    ) = 1
 )
 
 select
@@ -41,4 +57,4 @@ select
     -- Linaje
     source_file,
     load_ts
-from unioned
+from deduplicated

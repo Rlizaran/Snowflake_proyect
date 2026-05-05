@@ -36,8 +36,9 @@ cleaned as (
       and started_at >= '2024-01-01'::timestamp_ntz
       and ended_at is not null
       and ended_at > started_at
-      and rideable_type in ('%classic_bike%', '%electric_bike%')
-      and member_casual in ('%member%', '%casual%')
+      and end_station_id is not null
+      and rideable_type in ('classic_bike', 'electric_bike')
+      and member_casual in ('member', 'casual')
 ),
 
 enriched as (
