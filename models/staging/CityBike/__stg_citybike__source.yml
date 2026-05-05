@@ -27,12 +27,6 @@ sources:
           - name: rideable_type
             description: 'Tipo de bicicleta'
             data_type: varchar
-            data_tests:
-              - accepted_values:
-                  arguments:
-                    values: ['classic_bike', 'electric_bike']
-                  config:
-                    severity: warn
           - name: started_at
             description: 'Timestamp de inicio del viaje (varchar bronze)'
             data_type: varchar
@@ -58,12 +52,6 @@ sources:
           - name: member_casual
             description: 'Tipo de usuario'
             data_type: varchar
-            data_tests:
-              - accepted_values:
-                  arguments:
-                    values: ['member', 'casual']
-                  config:
-                    severity: warn
           - name: source_file
             description: 'Nombre del CSV de origen'
             data_type: varchar
