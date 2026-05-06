@@ -14,10 +14,6 @@
 # Silver (staging+silver): {DEV_,PRO_}CITYBIKE_SILVER.{intermediate, CITYBIKE, NOAA}
 # Gold (marts): {DEV_,PRO_}CITYBIKE_GOLD.MARTS
 #
-# El prefijo DEV_/PRO_ se controla con DBT_ENVIRONMENTS:
-#   export DBT_ENVIRONMENTS=DEV   # entorno desarrollo (sandbox __Snowflake)
-#   export DBT_ENVIRONMENTS=PRO   # entorno produccion (consumo Power BI)
-#
 # IMPORTANTE: las configuraciones aquí pueden ser sobreescritas en cada
 # modelo concreto usando el bloque `{{ config(...) }}`.
 # ============================================================================
@@ -89,7 +85,7 @@ models:
     staging:
       +materialized: incremental
       +on_schema_change: append_new_columns
-      +database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_SILVER"
+      +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       intermediate:
         +schema: intermediate      # Schema dentro de SILVER para stg_*
         stg_CityBike__citybike_trips_ny:
@@ -119,17 +115,8 @@ models:
     # ------------------------------------------------------------------------
     marts:
       +materialized: view
-      +database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_GOLD"
+      +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
       +schema: MARTS               # Schema unico para todos los marts
-
-# ============================================================================
-# CONFIGURACIÓN DE SEEDS
-# ============================================================================
-# Los seeds van a la base de datos BRONZE (datos crudos de referencia
-# cargados desde CSV: lookups, codigos de estacion, etc.).
-seeds:
-  +schema: seed_data
-  +database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_BRONZE"
 
 # ============================================================================
 # CONFIGURACIÓN DE SNAPSHOTS
@@ -139,7 +126,7 @@ seeds:
 # pierde su razón de ser).
 snapshots:
   +transient: false
-  +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_SILVER"
+  +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
   +target_schema: snapshots
 
 # ============================================================================
