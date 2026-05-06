@@ -27,31 +27,23 @@ CREATE OR REPLACE DATABASE DB_CITYBIKE_SILVER
 
 -- Database Gold: datamarts para Power BI
 CREATE OR REPLACE DATABASE DB_CITYBIKE_GOLD
-    COMMENT = 'datamarts analiticos para Power BI';
+    COMMENT = ' datamarts analiticos para Power BI';
 
--- Schema LOGS dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
-CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.LOGS
-    COMMENT = 'Table to keep track of the logs';
+-- Database LOGS: database para alojar tablas, stages, streams, tasks
+CREATE OR REPLACE DATABASE DB_CITYBIKE_LOGS
+    COMMENT = 'database para alojar tablas, stages, streams, tasks';
 
--- Schema CITYBIKE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
+-- Schema LOGS dentro de DB_CITYBIKE_LOGS para alojar tablas, stages, streams, tasks
+CREATE OR REPLACE SCHEMA DB_CITYBIKE_LOGS.LOGS
+    COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
+
+-- Schema CITYBIKE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.CITYBIKE
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
 
--- Schema NOAA dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages, streams, tasks
+-- Schema NOAA dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.NOAA
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
-
--- Schema CITYBIKE dentro de DB_CITYBIKE_SILVER para los modelos staging dbt de CityBike
-CREATE OR REPLACE SCHEMA DB_CITYBIKE_SILVER.CITYBIKE
-    COMMENT = 'Modelos dbt limpios y tipados (staging silver) - CityBike';
-
--- Schema NOAA dentro de DB_CITYBIKE_SILVER para los modelos staging dbt de NOAA
-CREATE OR REPLACE SCHEMA DB_CITYBIKE_SILVER.NOAA
-    COMMENT = 'Modelos dbt limpios y tipados (staging silver) - NOAA';
-
--- Schema GOLD dentro de DB_CITYBIKE_GOLD para los datamarts de dbt
-CREATE OR REPLACE SCHEMA DB_CITYBIKE_GOLD.MARTS
-    COMMENT = 'Datamarts';
 
 -- Verificaciones
 SHOW WAREHOUSES LIKE 'WH_NYCBIKE_DEV';

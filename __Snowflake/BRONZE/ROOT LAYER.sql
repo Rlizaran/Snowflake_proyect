@@ -7,7 +7,7 @@ USE DATABASE DB_CITYBIKE_BRONZE;
 USE SCHEMA   CITYBIKE;
 
 -- Tabla log de ejecuciones de procedures y tasks
-CREATE OR REPLACE TABLE LOGS.LOAD_LOG (
+CREATE OR REPLACE TABLE DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (
     run_ts     TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
     task_name  VARCHAR(128),
     outcome    VARCHAR(32),
@@ -108,14 +108,14 @@ BEGIN
     FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
     WHERE  TRY_CAST($1 AS NUMBER) IS NOT NULL;
 
-    INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+    INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_CITYBIKE_NY', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
 
     RETURN 'Carga de datos a citybike_NY exitosa';
 
 EXCEPTION
     WHEN OTHER THEN
-        INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+        INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
         VALUES ('LOAD_CITYBIKE_NY', 'ERROR', :SQLERRM);
         RAISE;
 END;
@@ -162,17 +162,18 @@ BEGIN
     FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
     WHERE  TRY_CAST($1 AS NUMBER) IS NOT NULL;
 
-    INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+    INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_CITYBIKE_JC', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
 
     RETURN 'Carga de datos a citybike_JC exitosa';
 
 EXCEPTION
     WHEN OTHER THEN
-        INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+        INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
         VALUES ('LOAD_CITYBIKE_JC', 'ERROR', :SQLERRM);
         RAISE;
 END;
+
 
 -- Procedure: carga incremental de NOAA by year (3 anios completos)
 CREATE OR REPLACE PROCEDURE NOAA.LOAD_NOAA_YEAR()
@@ -211,14 +212,14 @@ BEGIN
     FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
     WHERE  TRY_CAST($1 AS NUMBER) IS NOT NULL;
 
-    INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+    INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_NOAA_RAW_YEAR()', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
 
     RETURN 'Carga de datos a NOAA_RAW_YEAR exitosa';
 
 EXCEPTION
     WHEN OTHER THEN
-        INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+        INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
         VALUES ('NOAA_RAW_YEAR', 'ERROR', :SQLERRM);
         RAISE;
 END;
@@ -232,15 +233,16 @@ DECLARE
     v_rows  NUMBER := 0;
     v_files NUMBER := 0;
 BEGIN
+    ALTER STAGE DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE REFRESH;
     -- ALTER STAGE no genera RESULT_SCAN utilizable; se loguea directamente
-    INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+    INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('REFRESH CITYBIKE_JC STAGE', 'OK', 'Stage refrescado correctamente');
 
     RETURN 'JC landing stage refrescado';
 
 EXCEPTION
     WHEN OTHER THEN
-        INSERT INTO LOGS.LOAD_LOG (task_name, outcome, details)
+        INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
         VALUES ('REFRESH CITYBIKE_JC STAGE', 'ERROR', :SQLERRM);
         RAISE;
 END;
