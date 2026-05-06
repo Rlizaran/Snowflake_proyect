@@ -37,14 +37,11 @@ models:
 
     staging:
       +materialized: table
-      CityBike:
+      core:
         +database: DB_CITYBIKE_SILVER
-        +schema: CITYBIKE
+        +schema: core
         stg_CityBike__citybike_trips_ny:
           +snowflake_warehouse: WH_ANALISIS
-      NOAA:
-        +database: DB_CITYBIKE_SILVER
-        +schema: NOAA
 
     silver:
       +materialized: table
