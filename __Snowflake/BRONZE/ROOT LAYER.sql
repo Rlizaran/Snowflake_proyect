@@ -103,10 +103,10 @@ BEGIN
     ON_ERROR = 'CONTINUE';
 
     -- TRY_CAST filtra la fila de texto "Copy executed with 0 files processed."
-    SELECT COALESCE(SUM(TRY_CAST($1 AS NUMBER)), 0), COUNT(*)
+    SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
     INTO   :v_rows, :v_files
     FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
-    WHERE  TRY_CAST($1 AS NUMBER) IS NOT NULL;
+    WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
 
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_CITYBIKE_NY', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
@@ -157,10 +157,10 @@ BEGIN
     ON_ERROR = 'CONTINUE';
 
     -- TRY_CAST filtra la fila de texto "Copy executed with 0 files processed."
-    SELECT COALESCE(SUM(TRY_CAST($1 AS NUMBER)), 0), COUNT(*)
+    SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
     INTO   :v_rows, :v_files
     FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
-    WHERE  TRY_CAST($1 AS NUMBER) IS NOT NULL;
+    WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
 
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_CITYBIKE_JC', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
@@ -207,10 +207,10 @@ BEGIN
     ON_ERROR = 'CONTINUE';
     
     -- TRY_CAST filtra la fila de texto "Copy executed with 0 files processed."
-    SELECT COALESCE(SUM(TRY_CAST($1 AS NUMBER)), 0), COUNT(*)
+    SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
     INTO   :v_rows, :v_files
     FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
-    WHERE  TRY_CAST($1 AS NUMBER) IS NOT NULL;
+    WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
 
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_NOAA_RAW_YEAR()', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
