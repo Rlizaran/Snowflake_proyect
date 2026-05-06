@@ -1,11 +1,20 @@
--- Silver dimension: spine de fechas 2024-01-01 a 2026-12-31 con atributos calendario para joins en Gold y slicers en PBI
-
 with
 
-date_spine as (
-    -- Genera todas las fechas del rango del proyecto (3 anios = 1096 dias, +1 por bisiesto 2024)
-    select dateadd(day, seq4(), '2024-01-01'::date) as date_day
-    from table(generator(rowcount => 1096))
+distinct_dates as (
+    select distinct started_at::DATE as date_day
+    from {{ ref('stg_CityBike__citybike_trips_ny') }}
+    where started_at is not null 
+      and started_at >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
+    union
+    select distinct started_at::DATE as date_day
+    from {{ ref('stg_CityBike__citybike_trips_jc') }}
+    where started_at is not null 
+      and started_at >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
+    union
+    select distinct observation_date::DATE as date_day
+    from {{ ref('stg_NOAA__noaa_raw_year') }}
+    where observation_date is not null 
+      and observation_date >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
 )
 
 select
@@ -34,4 +43,4 @@ select
         when month(date_day) in (6,7,8)  then 'Verano'
         else 'Otono'
     end as season
-from date_spine
+from  distinct_dates
