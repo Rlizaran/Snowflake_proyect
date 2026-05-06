@@ -75,8 +75,12 @@ models:
         data_tests:
           - unique: { config: { severity: error } }
           - not_null
-          - accepted_values:
-              arguments: { values: ['classic_bike','electric_bike'] }
+      - name: rideable_type
+        description: 'Type of bikes available'
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+          - accepted_values: { arguments: { values: ['classic_bike','electric_bike'] } }
       - name: description
       - name: is_electric
 
@@ -87,8 +91,11 @@ models:
         data_tests:
           - unique: { config: { severity: error } }
           - not_null
-          - accepted_values:
-              arguments: { values: ['member','casual'] }
+      - name: member_casual
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+          - accepted_values: { arguments: { values: ['casual','member'] } }
       - name: description
       - name: is_subscriber
 

@@ -46,8 +46,8 @@ select
     trip_distance_km,
 
     -- FKs a lookups y dimensiones
-    rideable_type as rideable_type_code,
-    member_casual as user_type_code,
+    {{ dbt_utils.generate_surrogate_key(['rideable_type']) }} as rideable_type_code,
+    {{ dbt_utils.generate_surrogate_key(['member_casual']) }} as user_type_code,
     start_station_id,
     end_station_id,
 
