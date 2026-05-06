@@ -3,7 +3,7 @@ version: 2
 # Sources: tablas Bronze del schema NOAA en {DEV_,PRO_}CITYBIKE_BRONZE
 sources:
   - name: NOAA
-    database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_BRONZE"
+    database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
     schema: NOAA
     description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC)'
 
