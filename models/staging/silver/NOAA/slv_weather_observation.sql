@@ -1,5 +1,7 @@
 -- Silver fact NOAA en long format normalizado: un row por (station_id, observation_date, element_code)
 -- Surrogate key (observation_id) generado con dbt_utils para simplificar joins downstream
+-- Materializado como VIEW (default del proyecto): solo agrega un MD5 sobre stg ya
+-- materializado, no requiere persistencia adicional.
 with
 
 obs as (

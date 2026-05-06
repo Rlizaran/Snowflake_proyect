@@ -1,9 +1,11 @@
 -- Silver fact normalizado: un row por viaje (NY+JC unidos), con FKs explicitas a estaciones, tipos y fecha
+-- Materializado como TABLE (override sobre el +materialized: view del project): la query
+-- hace UNION ALL de NY+JC, dedup con QUALIFY ROW_NUMBER y ST_DISTANCE — demasiado caro
+-- para recomputar en cada consulta como vista. Con table, dbt run lo refresca completo
+-- una vez y los downstream (marts, PBI) se benefician del resultado pre-calculado.
 {{
   config(
-    materialized='incremental',
-    unique_key='ride_id',
-    incremental_strategy='delete+insert',
+    materialized='table',
     snowflake_warehouse='WH_ANALISIS'
   )
 }}

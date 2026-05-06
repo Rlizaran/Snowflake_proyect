@@ -1,9 +1,6 @@
--- Silver lookup: tipos de usuario CityBike + descripcion (2 valores: member, casual)
-{{ config(
-    materialized='incremental',
-    unique_key='user_type_code',
-    incremental_strategy='merge'
-) }}
+-- Silver lookup: tipos de usuario CityBike + descripcion (valor fijo: member, casual)
+-- Materializado como VIEW (default del proyecto): dominio cerrado de 2 valores,
+-- no tiene sentido persistirlo ni hacerlo incremental.
 
 with
 
@@ -30,7 +27,3 @@ select
         else false
     end as is_subscriber
 from distinct_types
-
-{% if is_incremental() %}
-    where user_type_code not in (select user_type_code from {{ this }})
-{% endif %}

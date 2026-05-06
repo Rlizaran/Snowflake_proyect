@@ -1,4 +1,5 @@
 -- Silver dimension: estaciones meteorologicas NOAA con metadata fija (Manhattan + Newark/JC)
+-- Materializado como VIEW (default del proyecto): 2 filas hardcoded, dominio cerrado.
 
 select
     station_id,

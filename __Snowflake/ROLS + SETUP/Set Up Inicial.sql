@@ -17,17 +17,29 @@ CREATE OR REPLACE WAREHOUSE WH_ANALISIS
          SCALING_POLICY = 'ECONOMY'
          COMMENT = 'Warehouse para analisis en Notebooks';
 
--- Database Bronze: landing para los datos crudos
-CREATE OR REPLACE DATABASE DB_CITYBIKE_BRONZE
-    COMMENT = 'datos crudos tal cual llegan desde S3 / landing stages';
+-- Database Bronze DEV: landing para los datos crudos (entorno desarrollo, usado por __Snowflake)
+CREATE OR REPLACE DATABASE DEV_CITYBIKE_BRONZE
+    COMMENT = 'datos crudos tal cual llegan desde S3 / landing stages (DEV)';
 
--- Database Silver: dbt materializa aqui los modelos limpios y tipados
-CREATE OR REPLACE DATABASE DB_CITYBIKE_SILVER
-    COMMENT = 'datos limpios, tipados y conformes';
+-- Database Bronze PRO: landing produccion (lo consume dbt)
+CREATE OR REPLACE DATABASE PRO_CITYBIKE_BRONZE
+    COMMENT = 'datos crudos tal cual llegan desde S3 / landing stages (PRO, usado por dbt)';
 
--- Database Gold: datamarts para Power BI
-CREATE OR REPLACE DATABASE DB_CITYBIKE_GOLD
-    COMMENT = ' datamarts analiticos para Power BI';
+-- Database Silver DEV: modelos limpios y tipados (entorno desarrollo)
+CREATE OR REPLACE DATABASE DEV_CITYBIKE_SILVER
+    COMMENT = 'datos limpios, tipados y conformes (DEV)';
+
+-- Database Silver PRO: modelos limpios produccion (lo consume dbt)
+CREATE OR REPLACE DATABASE PRO_CITYBIKE_SILVER
+    COMMENT = 'datos limpios, tipados y conformes (PRO, usado por dbt)';
+
+-- Database Gold DEV: datamarts para Power BI (entorno desarrollo)
+CREATE OR REPLACE DATABASE DEV_CITYBIKE_GOLD
+    COMMENT = 'datamarts analiticos para Power BI (DEV)';
+
+-- Database Gold PRO: datamarts produccion (lo consume dbt)
+CREATE OR REPLACE DATABASE PRO_CITYBIKE_GOLD
+    COMMENT = 'datamarts analiticos para Power BI (PRO, usado por dbt)';
 
 -- Database LOGS: database para alojar tablas, stages, streams, tasks
 CREATE OR REPLACE DATABASE DB_CITYBIKE_LOGS
@@ -37,18 +49,29 @@ CREATE OR REPLACE DATABASE DB_CITYBIKE_LOGS
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_LOGS.LOGS
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
 
--- Schema CITYBIKE dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages
-CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.CITYBIKE
+-- Schema CITYBIKE dentro de DEV_CITYBIKE_BRONZE para alojar tablas, stages
+CREATE OR REPLACE SCHEMA DEV_CITYBIKE_BRONZE.CITYBIKE
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
 
--- Schema NOAA dentro de DB_CITYBIKE_BRONZE para alojar tablas, stages
-CREATE OR REPLACE SCHEMA DB_CITYBIKE_BRONZE.NOAA
+-- Schema NOAA dentro de DEV_CITYBIKE_BRONZE para alojar tablas, stages
+CREATE OR REPLACE SCHEMA DEV_CITYBIKE_BRONZE.NOAA
     COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
+
+-- Schema CITYBIKE dentro de PRO_CITYBIKE_BRONZE (espejo PRO para dbt)
+CREATE OR REPLACE SCHEMA PRO_CITYBIKE_BRONZE.CITYBIKE
+    COMMENT = 'Tablas raw, stages, file formats (PRO)';
+
+-- Schema NOAA dentro de PRO_CITYBIKE_BRONZE (espejo PRO para dbt)
+CREATE OR REPLACE SCHEMA PRO_CITYBIKE_BRONZE.NOAA
+    COMMENT = 'Tablas raw, stages, file formats (PRO)';
 
 -- Verificaciones
 SHOW WAREHOUSES LIKE 'WH_NYCBIKE_DEV';
-SHOW DATABASES   LIKE 'DB_CITYBIKE_%';
-SHOW SCHEMAS IN DATABASE DB_CITYBIKE_BRONZE;
-SHOW SCHEMAS IN DATABASE DB_CITYBIKE_SILVER;
-SHOW SCHEMAS IN DATABASE DB_CITYBIKE_GOLD;
+SHOW DATABASES   LIKE '%CITYBIKE%';
+SHOW SCHEMAS IN DATABASE DEV_CITYBIKE_BRONZE;
+SHOW SCHEMAS IN DATABASE PRO_CITYBIKE_BRONZE;
+SHOW SCHEMAS IN DATABASE DEV_CITYBIKE_SILVER;
+SHOW SCHEMAS IN DATABASE PRO_CITYBIKE_SILVER;
+SHOW SCHEMAS IN DATABASE DEV_CITYBIKE_GOLD;
+SHOW SCHEMAS IN DATABASE PRO_CITYBIKE_GOLD;
 

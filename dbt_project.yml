@@ -1,10 +1,31 @@
-# dbt project: Bronze (sources) -> staging (cast 1:1) -> silver (normalizado, FKs) -> marts (Gold star schema)
-
+# ============================================================================
+# dbt_project.yml — Pipeline medallion CityBike + NOAA en Snowflake
+# ============================================================================
+# Este es el archivo central del proyecto dbt. Aquí definimos:
+#   - Nombre y versión del proyecto
+#   - Profile que usaremos (la conexión al DW)
+#   - Rutas de los distintos tipos de archivos (models, tests, seeds, ...)
+#   - Configuraciones por defecto para cada tipo de recurso (materialización,
+#     base de datos, schema, transient, ...)
+#   - Hooks que se ejecutan al inicio/final de cada ejecución
+#   - Variables de proyecto
+#
+# Bronze (sources): {DEV_,PRO_}CITYBIKE_BRONZE.{CITYBIKE,NOAA}
+# Silver (staging+silver): {DEV_,PRO_}CITYBIKE_SILVER.{intermediate, CITYBIKE, NOAA}
+# Gold (marts): {DEV_,PRO_}CITYBIKE_GOLD.MARTS
+#
+# El prefijo DEV_/PRO_ se controla con DBT_ENVIRONMENTS:
+#   export DBT_ENVIRONMENTS=DEV   # entorno desarrollo (sandbox __Snowflake)
+#   export DBT_ENVIRONMENTS=PRO   # entorno produccion (consumo Power BI)
+#
+# IMPORTANTE: las configuraciones aquí pueden ser sobreescritas en cada
+# modelo concreto usando el bloque `{{ config(...) }}`.
+# ============================================================================
 name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
 
-# Profile que dbt usara (debe coincidir con la llave en profiles.yml)
+# El profile debe coincidir con la llave en profiles.yml
 profile: 'snowflake_proyect'
 
 # Snowflake guarda identificadores en mayusculas; sin quoting evita conflictos
@@ -13,45 +34,125 @@ quoting:
   schema: false
   identifier: false
 
-# Rutas estandar de dbt
-model-paths: ["models"]
+# ----------------------------------------------------------------------------
+# Rutas de archivos (no es necesario modificar a no ser que se renombren
+# los directorios estándar)
+# ----------------------------------------------------------------------------
+model-paths:    ["models"]
 analysis-paths: ["analyses"]
-test-paths: ["tests"]
-seed-paths: ["seeds"]
-macro-paths: ["macros"]
+test-paths:     ["tests"]
+seed-paths:     ["seeds"]
+macro-paths:    ["macros"]
 snapshot-paths: ["snapshots"]
 
-target-path: "target"
-clean-targets:
+target-path: "target"           # Aquí dbt deja el SQL compilado y los artefactos
+clean-targets:                  # Directorios que `dbt clean` elimina
   - "target"
   - "dbt_packages"
 
+# ----------------------------------------------------------------------------
+# Hooks a nivel de proyecto
+# ----------------------------------------------------------------------------
+# `on-run-start` se ejecuta al inicio de cada `dbt run/build/seed/snapshot`.
+# Lo usamos para asegurar que el warehouse de Snowflake está activo antes
+# de lanzar las transformaciones (si está suspendido y la primera query
+# tarda mucho, se evitan timeouts).
+#on-run-start:
+#  - "ALTER WAREHOUSE WH_NYCBIKE_DEV RESUME IF SUSPENDED;"
 
-# Configuracion por capa de la arquitectura medallion
-# - sources (Bronze): DB_CITYBIKE_BRONZE.{CITYBIKE,NOAA}(raw VARCHAR)
-# - staging (cast 1:1): models/staging/<dominio>/* -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}
-# - silver (normalizado): models/silver/<dominio>/*  -> DB_CITYBIKE_SILVER.{CITYBIKE,NOAA}(PKs + FKs + slv_date)
-# - marts (Gold): models/marts/*-> DB_CITYBIKE_GOLD.MARTS(star schema, agregaciones)
+# ============================================================================
+# CONFIGURACIÓN DE MODELOS
+# ============================================================================
+# Las configuraciones se aplican en cascada por estructura de directorios.
+# Una config en `staging:` aplica a TODOS los modelos bajo /models/staging/
+# salvo que ese modelo tenga su propio bloque `{{ config(...) }}`.
+#
+# El símbolo `+` indica que estamos pasando una config (no un sub-directorio).
+# ============================================================================
 models:
+  # `+transient: false` evita que Snowflake cree tablas transient por defecto.
+  # Las transient no tienen Time Travel ni Fail-safe; son más baratas pero
+  # más arriesgadas para modelos productivos.
+  +transient: false
   snowflake_proyect:
 
+    # ------------------------------------------------------------------------
+    # STAGING — cast 1:1 desde Bronze (Capa Silver, schema intermediate)
+    # ------------------------------------------------------------------------
+    # Materializados como INCREMENTAL: bronze siempre crece (nuevos archivos
+    # mensuales NY/JC, NOAA diario), por lo que solo procesamos filas nuevas
+    # en cada run para ahorrar warehouse credits.
+    # Cada modelo elige su propia estrategia (append/merge/delete+insert)
+    # justificada por la naturaleza de la fuente.
+    # Apuntan a la BD SILVER del entorno actual (DEV_ o PRO_).
+    # ------------------------------------------------------------------------
     staging:
-      +materialized: table
-      core:
-        +database: DB_CITYBIKE_SILVER
-        +schema: core
+      +materialized: incremental
+      +on_schema_change: append_new_columns
+      +database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_SILVER"
+      intermediate:
+        +schema: intermediate      # Schema dentro de SILVER para stg_*
         stg_CityBike__citybike_trips_ny:
           +snowflake_warehouse: WH_ANALISIS
 
-    silver:
-      +materialized: table
-      CityBike:
-        +database: DB_CITYBIKE_SILVER
-        +schema: CITYBIKE
-      NOAA:
-        +database: DB_CITYBIKE_SILVER
-        +schema: NOAA
+      # ----------------------------------------------------------------------
+      # SILVER normalizado — slv_* con PKs/FKs explicitas
+      # ----------------------------------------------------------------------
+      # Default = VIEW: la mayoria son lookups pequenios o derivaciones
+      # baratas sobre intermediate (que ya esta materializado). Las vistas
+      # devuelven siempre datos frescos sin coste de almacenamiento.
+      # slv_trip override a TABLE: union NY+JC con dedup y calculos
+      # geoespaciales — demasiado pesado para recomputar en cada query.
+      # ----------------------------------------------------------------------
+      silver:
+        +materialized: view
+        CityBike:
+          +schema: CITYBIKE        # Schema CityBike dentro de SILVER
+        NOAA:
+          +schema: NOAA            # Schema NOAA dentro de SILVER
+
+    # ------------------------------------------------------------------------
+    # MARTS — Capa Gold (star schema para consumo Power BI)
+    # ------------------------------------------------------------------------
+    # Los marts son la capa de consumo. Materializados como vista por defecto
+    # (siempre datos frescos). Apuntan a la BD GOLD del entorno.
+    # ------------------------------------------------------------------------
     marts:
-      +database: DB_CITYBIKE_GOLD
-      +schema: MARTS
       +materialized: view
+      +database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_GOLD"
+      +schema: MARTS               # Schema unico para todos los marts
+
+# ============================================================================
+# CONFIGURACIÓN DE SEEDS
+# ============================================================================
+# Los seeds van a la base de datos BRONZE (datos crudos de referencia
+# cargados desde CSV: lookups, codigos de estacion, etc.).
+seeds:
+  +schema: seed_data
+  +database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_BRONZE"
+
+# ============================================================================
+# CONFIGURACIÓN DE SNAPSHOTS
+# ============================================================================
+# Los snapshots viven en SILVER, schema `snapshots`, como tablas no
+# transient (las transient no tienen Time Travel y un snapshot SIN historia
+# pierde su razón de ser).
+snapshots:
+  +transient: false
+  +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_SILVER"
+  +target_schema: snapshots
+
+# ============================================================================
+# CONFIGURACIÓN DE TESTS
+# ============================================================================
+# Por defecto, fallamos en error. `store_failures: true` guarda las filas que
+# fallan los tests en una tabla auditable (útil en debugging).
+tests:
+  +store_failures: false
+  +severity: error
+
+# ============================================================================
+# CONFIGURACIÓN DE FUENTES
+# ============================================================================
+# Aquí podríamos sobreescribir freshness o metadata de sources de forma global.
+# (Por ahora todo se gestiona en cada _source.yml por dominio).

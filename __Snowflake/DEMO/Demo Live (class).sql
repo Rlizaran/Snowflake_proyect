@@ -3,7 +3,7 @@
 
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;
-USE DATABASE DB_CITYBIKE_BRONZE;
+USE DATABASE DEV_CITYBIKE_BRONZE;
 
 -- =====================================================================
 -- PASO 0: ESTADO INICIAL (antes de tocar nada)
@@ -17,11 +17,11 @@ UNION ALL
 SELECT 'noaa_raw_year'            , COUNT(*)         FROM NOAA.NOAA_RAW_YEAR;
 
 -- Estado de los streams ANTES (todos deberian estar FALSE si Silver/dbt ya consumio)
-SELECT 'STM_CITYBIKE_NY' AS stream, SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_NY') AS has_data_before
+SELECT 'STM_CITYBIKE_NY' AS stream, SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_NY') AS has_data_before
 UNION ALL
-SELECT 'STM_CITYBIKE_JC'         , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC')
+SELECT 'STM_CITYBIKE_JC'         , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_JC')
 UNION ALL
-SELECT 'STM_NOAA_YEAR'           , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_NOAA_YEAR');
+SELECT 'STM_NOAA_YEAR'           , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_NOAA_YEAR');
 
 
 -- =====================================================================
@@ -43,11 +43,11 @@ VALUES
 SELECT * FROM CITYBIKE.CITYBIKE_TRIPS_NY WHERE ride_id LIKE 'DEMO-NY-%';
 
 -- El stream debe haber capturado las 2 filas
-SELECT SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_NY') AS ny_pending;
+SELECT SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_NY') AS ny_pending;
 
 -- Ver el delta capturado por el stream (no consume todavia, solo mira)
 SELECT METADATA$ACTION, METADATA$ISUPDATE, ride_id, rideable_type, member_casual
-FROM   LOGS.STM_CITYBIKE_NY
+FROM   DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_NY
 WHERE  ride_id LIKE 'DEMO-NY-%';
 
 
@@ -70,11 +70,11 @@ VALUES
 SELECT * FROM CITYBIKE.CITYBIKE_TRIPS_JC WHERE ride_id LIKE 'DEMO-JC-%';
 
 -- Stream JC debe estar TRUE
-SELECT SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC') AS jc_pending;
+SELECT SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_JC') AS jc_pending;
 
 -- Ver el delta del stream JC
 SELECT METADATA$ACTION, METADATA$ISUPDATE, ride_id, rideable_type, member_casual
-FROM   LOGS.STM_CITYBIKE_JC
+FROM   DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_JC
 WHERE  ride_id LIKE 'DEMO-JC-%';
 
 
@@ -93,7 +93,7 @@ VALUES
 SELECT * FROM NOAA.NOAA_RAW_YEAR WHERE source_file = 'demo_class.csv';
 
 -- Stream NOAA debe estar TRUE
-SELECT SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_NOAA_YEAR') AS noaa_pending;
+SELECT SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_NOAA_YEAR') AS noaa_pending;
 
 
 -- =====================================================================
@@ -108,11 +108,11 @@ UNION ALL
 SELECT 'noaa_raw_year'            , COUNT(*)         FROM NOAA.NOAA_RAW_YEAR;
 
 -- Estado de streams (los 3 de tabla deben estar TRUE)
-SELECT 'STM_CITYBIKE_NY' AS stream, SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_NY') AS has_data
+SELECT 'STM_CITYBIKE_NY' AS stream, SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_NY') AS has_data
 UNION ALL
-SELECT 'STM_CITYBIKE_JC'         , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_CITYBIKE_JC')
+SELECT 'STM_CITYBIKE_JC'         , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_CITYBIKE_JC')
 UNION ALL
-SELECT 'STM_NOAA_YEAR'           , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LOGS.STM_NOAA_YEAR');
+SELECT 'STM_NOAA_YEAR'           , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.LOGS.STM_NOAA_YEAR');
 
 
 -- =====================================================================
@@ -120,13 +120,13 @@ SELECT 'STM_NOAA_YEAR'           , SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_BRONZE.LO
 -- =====================================================================
 
 -- Forzar Chain 1 sin esperar el cron del domingo
-EXECUTE TASK LOGS.TSK_BRONZE_CITYBIKE;
+EXECUTE TASK DB_CITYBIKE_LOGS.LOGS.TSK_BRONZE_CITYBIKE;
 
 -- Esperar ~30 segundos y revisar el historial
 SELECT name, state, scheduled_time, completed_time, return_value, error_message
-FROM   TABLE(DB_CITYBIKE_BRONZE.INFORMATION_SCHEMA.TASK_HISTORY(
+FROM   TABLE(DB_CITYBIKE_LOGS.INFORMATION_SCHEMA.TASK_HISTORY(
             SCHEDULED_TIME_RANGE_START => DATEADD(minute, -10, CURRENT_TIMESTAMP())))
-WHERE  database_name = 'DB_CITYBIKE_BRONZE'
+WHERE  database_name = 'DB_CITYBIKE_LOGS'
 ORDER BY scheduled_time DESC;
 -- Esperado:
 -- TSK_BRONZE_CITYBIKE = SUCCEEDED (corre LOAD_CITYBIKE_NY que hace COPY desde S3)
@@ -138,7 +138,7 @@ ORDER BY scheduled_time DESC;
 -- =====================================================================
 
 -- Las procedures dejan rastro en LOAD_LOG
-SELECT * FROM LOGS.LOAD_LOG ORDER BY run_ts DESC LIMIT 10;
+SELECT * FROM DB_CITYBIKE_LOGS.LOGS.LOAD_LOG ORDER BY run_ts DESC LIMIT 10;
 -- Esperado: filas LOAD_CITYBIKE_NY OK, LOAD_NOAA_YEAR OK, posiblemente DRAIN si JC corrio
 
 

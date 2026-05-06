@@ -1,9 +1,6 @@
--- Silver lookup: tipos de bicicleta CityBike + descripcion y flags derivados (3 valores: classic, electric, docked)
-{{ config(
-    materialized='incremental',
-    unique_key='rideable_type_code',
-    incremental_strategy='merge'
-) }}
+-- Silver lookup: tipos de bicicleta CityBike + descripcion y flags derivados (valor fijo: classic, electric)
+-- Materializado como VIEW (default del proyecto): solo 2-3 filas, computar al vuelo es trivial
+-- y evita la sobrecarga de incremental sobre un dominio cerrado que no crece.
 
 with
 
@@ -30,7 +27,3 @@ select
         else false
     end as is_electric
 from distinct_types
-
-{% if is_incremental() %}
-    where rideable_type_code not in (select rideable_type_code from {{ this }})
-{% endif %}

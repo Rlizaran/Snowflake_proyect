@@ -3,7 +3,7 @@
 -- Conectar usuario, warehouse y database
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;
-USE DATABASE DB_CITYBIKE_BRONZE;
+USE DATABASE DEV_CITYBIKE_BRONZE;
 USE SCHEMA   CITYBIKE;
 
 -- Tabla log de ejecuciones de procedures y tasks
@@ -53,7 +53,7 @@ CREATE OR REPLACE TABLE CITYBIKE.CITYBIKE_TRIPS_JC (
 );
 
 -- Tabla raw NOAA by year (3 anios completos, se filtra por estacion en Silver)
-CREATE OR REPLACE TABLE DB_CITYBIKE_BRONZE.NOAA.NOAA_RAW_YEAR (
+CREATE OR REPLACE TABLE DEV_CITYBIKE_BRONZE.NOAA.NOAA_RAW_YEAR (
     station_id          VARCHAR(256),
     observation_date    VARCHAR(256),
     element             VARCHAR(256),
@@ -74,8 +74,10 @@ AS
 DECLARE
     v_rows  NUMBER := 0;
     v_files NUMBER := 0;
+    v_qid   VARCHAR;
+    v_zero  NUMBER := 0;
 BEGIN
-    COPY INTO DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_NY (
+    COPY INTO DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_NY (
         ride_id,
         rideable_type,
         started_at,
@@ -97,16 +99,26 @@ BEGIN
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
             SPLIT_PART(METADATA$FILENAME, '/', -1),
             CURRENT_TIMESTAMP()
-        FROM @DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE
+        FROM @DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE
     )
     PATTERN = '2024[0-9]{2}-citibike-tripdata\\.zip|202[5-9][0-9]{2}-citibike-tripdata\\.zip'
     ON_ERROR = 'CONTINUE';
 
-    -- TRY_CAST filtra la fila de texto "Copy executed with 0 files processed."
-    SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
-    INTO   :v_rows, :v_files
-    FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
-    WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+    -- Captura el query id del COPY para no perderlo con queries siguientes
+    v_qid := LAST_QUERY_ID(-1);
+
+    -- Detecta caso "0 files processed" donde RESULT_SCAN solo tiene columna status ($1)
+    SELECT COUNT(*) INTO :v_zero
+    FROM   TABLE(RESULT_SCAN(:v_qid))
+    WHERE  $1 LIKE 'Copy executed with 0 files%';
+
+    -- Solo lee $3 (rows_parsed) si hubo archivos cargados, evita "invalid identifier"
+    IF (v_zero = 0) THEN
+        SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
+        INTO   :v_rows, :v_files
+        FROM   TABLE(RESULT_SCAN(:v_qid))
+        WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+    END IF;
 
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_CITYBIKE_NY', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
@@ -128,6 +140,8 @@ AS
 DECLARE
     v_rows  NUMBER := 0;
     v_files NUMBER := 0;
+    v_qid   VARCHAR;
+    v_zero  NUMBER := 0;
 BEGIN
     COPY INTO CITYBIKE.CITYBIKE_TRIPS_JC (
         ride_id,
@@ -156,11 +170,21 @@ BEGIN
     PATTERN = '.*JC-202[4-9][0-9]{2}-citibike-tripdata\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
 
-    -- TRY_CAST filtra la fila de texto "Copy executed with 0 files processed."
-    SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
-    INTO   :v_rows, :v_files
-    FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
-    WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+    -- Captura el query id del COPY para no perderlo con queries siguientes
+    v_qid := LAST_QUERY_ID(-1);
+
+    -- Detecta caso "0 files processed" donde RESULT_SCAN solo tiene columna status ($1)
+    SELECT COUNT(*) INTO :v_zero
+    FROM   TABLE(RESULT_SCAN(:v_qid))
+    WHERE  $1 LIKE 'Copy executed with 0 files%';
+
+    -- Solo lee $3 (rows_parsed) si hubo archivos cargados, evita "invalid identifier"
+    IF (v_zero = 0) THEN
+        SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
+        INTO   :v_rows, :v_files
+        FROM   TABLE(RESULT_SCAN(:v_qid))
+        WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+    END IF;
 
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_CITYBIKE_JC', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
@@ -183,8 +207,10 @@ AS
 DECLARE
     v_rows  NUMBER := 0;
     v_files NUMBER := 0;
+    v_qid   VARCHAR;
+    v_zero  NUMBER := 0;
 BEGIN
-    COPY INTO DB_CITYBIKE_BRONZE.NOAA.NOAA_RAW_YEAR (
+    COPY INTO DEV_CITYBIKE_BRONZE.NOAA.NOAA_RAW_YEAR (
         station_id,
         observation_date,
         element,
@@ -201,16 +227,26 @@ BEGIN
             $1,$2,$3,$4,$5,$6,$7,$8,
             SPLIT_PART(METADATA$FILENAME, '/', -1),
             CURRENT_TIMESTAMP()
-        FROM @DB_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_YEAR
+        FROM @DEV_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_YEAR
     )
     PATTERN = '.*202[4-6]\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
-    
-    -- TRY_CAST filtra la fila de texto "Copy executed with 0 files processed."
-    SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
-    INTO   :v_rows, :v_files
-    FROM   TABLE(RESULT_SCAN(LAST_QUERY_ID(-1)))
-    WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+
+    -- Captura el query id del COPY para no perderlo con queries siguientes
+    v_qid := LAST_QUERY_ID(-1);
+
+    -- Detecta caso "0 files processed" donde RESULT_SCAN solo tiene columna status ($1)
+    SELECT COUNT(*) INTO :v_zero
+    FROM   TABLE(RESULT_SCAN(:v_qid))
+    WHERE  $1 LIKE 'Copy executed with 0 files%';
+
+    -- Solo lee $3 (rows_parsed) si hubo archivos cargados, evita "invalid identifier"
+    IF (v_zero = 0) THEN
+        SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
+        INTO   :v_rows, :v_files
+        FROM   TABLE(RESULT_SCAN(:v_qid))
+        WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+    END IF;
 
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('LOAD_NOAA_RAW_YEAR()', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
@@ -233,7 +269,7 @@ DECLARE
     v_rows  NUMBER := 0;
     v_files NUMBER := 0;
 BEGIN
-    ALTER STAGE DB_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE REFRESH;
+    ALTER STAGE DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE REFRESH;
     -- ALTER STAGE no genera RESULT_SCAN utilizable; se loguea directamente
     INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
     VALUES ('REFRESH CITYBIKE_JC STAGE', 'OK', 'Stage refrescado correctamente');

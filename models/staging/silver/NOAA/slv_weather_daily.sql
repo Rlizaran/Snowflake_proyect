@@ -1,5 +1,8 @@
 -- Silver wide: pivot pre-agregado de slv_weather_observation por (station_id, observation_date) - facilita joins por fecha
 -- Surrogate key (daily_id) generado con dbt_utils para PK simple
+-- Materializado como VIEW (default del proyecto): el pivot es 2 estaciones x ~365 dias x 3 anios
+-- (~2200 filas), aceptable para recomputar al vuelo. Si crece la cantidad de estaciones
+-- considerar override a 'table'.
 
 with
 

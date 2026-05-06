@@ -1,3 +1,7 @@
+-- Silver date spine: calendario derivado de fechas presentes en NY/JC/NOAA
+-- Materializado como VIEW (default del proyecto): UNION DISTINCT sobre 3 stg + atributos
+-- de calendario; barato de recomputar al vuelo y siempre refleja el rango actual de los datos.
+
 with
 
 distinct_dates as (

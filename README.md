@@ -12,7 +12,7 @@ Pipeline medallion (Bronze → Silver → Gold) sobre **Citi Bike NYC + Jersey C
 ## Arquitectura
 
 ```
-DB_CITYBIKE_BRONZE                          DB_CITYBIKE_SILVER                          DB_CITYBIKE_GOLD
+DEV_/PRO_CITYBIKE_BRONZE                    DEV_/PRO_CITYBIKE_SILVER                    DEV_/PRO_CITYBIKE_GOLD
   CITYBIKE                                    CITYBIKE                                    MARTS
    citybike_trips_ny       ──cast──▶  stg_*_ny ──┐                                         fct_trips_daily
    citybike_trips_jc       ──cast──▶  stg_*_jc ──┴──union──▶ slv_trip ────────┐            dim_station
@@ -32,10 +32,10 @@ DB_CITYBIKE_BRONZE                          DB_CITYBIKE_SILVER                  
 
 ## Capas
 
-### Bronze — `DB_CITYBIKE_BRONZE`
+### Bronze — `DEV_CITYBIKE_BRONZE` (ingesta + dbt sources; PRO_ disponible para futuro)
 3 tablas raw, todas en VARCHAR para preservar el dato original. Una por fuente: NY trips, JC trips, NOAA observations.
 
-### Silver — `DB_CITYBIKE_SILVER` (9 tablas)
+### Silver — `DEV_CITYBIKE_SILVER` (9 tablas, materializado por dbt; PRO_ disponible para futuro)
 Casteado, limpio, normalizado en 3NF. **NY+JC unidos** en `slv_trip` para que Gold y PBI tengan una sola tabla de viajes. NOAA queda en long format normalizado (`slv_weather_observation`) + un wide pre-pivoteado (`slv_weather_daily`) para joins por fecha.
 
 | Tabla | Schema | PK | FKs | Notas |
@@ -54,7 +54,7 @@ Casteado, limpio, normalizado en 3NF. **NY+JC unidos** en `slv_trip` para que Go
 
 **¿Por qué `trip_distance_km` y `trip_duration_min` van en Silver y no en Gold?** Son atributos derivados a nivel fila, no KPIs. KPI = agregación (avg, sum, percentil). Atributo derivado = enriquecimiento del row. Si los pones en Gold, cada mart que los necesite los recalcularía. Una vez en Silver, Gold solo agrega.
 
-### Gold — `DB_CITYBIKE_GOLD.MARTS` (3 marts)
+### Gold — `DEV_CITYBIKE_GOLD.MARTS` (3 marts, materializado por dbt; PRO_ disponible para futuro)
 Star schema desnormalizado para Power BI. Consume Silver (no Bronze).
 
 - `fct_trips_daily` — fact agregado por (`trip_date`, `city`, `rideable_type`, `member_casual`) con métricas (`num_trips`, `avg_distance_km`, etc.) y clima joineado por fecha
@@ -63,7 +63,7 @@ Star schema desnormalizado para Power BI. Consume Silver (no Bronze).
 
 ## Orquestación de Tasks
 
-Todos los tasks viven en `DB_CITYBIKE_BRONZE.LOGS` (mismo schema requerido por el DAG de Snowflake).
+Todos los tasks y streams viven en `DB_CITYBIKE_LOGS.LOGS` (DB dedicada para orquestacion).
 
 ```
 Chain 1 — domingos 03:00 NY
@@ -95,7 +95,7 @@ Antes de Chain 2 corre el script Python (Task Scheduler / GitHub Actions) que su
 7. **Transformación staging** — `dbt run` sobre `models/staging/*` → cast VARCHAR a tipos correctos + filtrado de basura (~20 filas malas en NY).
 8. **Transformación silver** — `dbt run` sobre `models/silver/*` → normalización en 9 tablas con PKs y FKs explícitas.
 9. **Transformación marts** — `dbt run` sobre `models/marts/*` → star schema final.
-10. **Consumo Power BI** — conecta a `DB_CITYBIKE_GOLD.MARTS`, modela relaciones `dim_date[date_id] → fct_trips_daily[trip_date]` y `dim_station[station_id] → fct_trips_daily[start_station_id]`.
+10. **Consumo Power BI** — conecta a `DEV_CITYBIKE_GOLD.MARTS`, modela relaciones `dim_date[date_id] → fct_trips_daily[trip_date]` y `dim_station[station_id] → fct_trips_daily[start_station_id]`.
 
 ## Estructura del repo
 

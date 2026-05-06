@@ -1,4 +1,6 @@
 -- Silver lookup: elementos meteorologicos NOAA GHCN-Daily (codigo + descripcion + unidad)
+-- Materializado como VIEW (default del proyecto): 9 filas hardcoded (valores fijos NOAA),
+-- sin necesidad de persistencia ni incremental.
 
 select
     element_code,
