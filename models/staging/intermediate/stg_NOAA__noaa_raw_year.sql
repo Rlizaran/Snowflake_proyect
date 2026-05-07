@@ -14,9 +14,7 @@
   )
 }}
 
-with
-
-source as (
+with source as (
     select * from {{ source('NOAA', 'noaa_raw_year') }}
 
     {% if is_incremental() %}
