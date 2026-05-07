@@ -3,7 +3,7 @@ version: 2
 # Sources: tablas Bronze del schema CITYBIKE en {DEV_,PRO_}CITYBIKE_BRONZE
 sources:
   - name: CityBike
-    database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_BRONZE"
+    database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
     schema: CITYBIKE
     description: 'Datos crudos de Citi Bike (NY + Jersey City) tal cual llegan de los CSV publicos'
 
