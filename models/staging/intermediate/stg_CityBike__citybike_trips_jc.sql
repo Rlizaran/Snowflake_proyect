@@ -9,7 +9,10 @@
     materialized='incremental',
     incremental_strategy='merge',
     unique_key='ride_id',
-    merge_update_columns=['rideable_type','started_at','ended_at','trip_duration_min','start_station_name','start_station_id','end_station_name','end_station_id','start_lat','start_lng','end_lat','end_lng','trip_distance_km','member_casual','source_file','load_ts']
+    merge_update_columns=['rideable_type','started_at','ended_at',
+    'trip_duration_min','start_station_name','start_station_id','end_station_name',
+    'end_station_id','start_lat','start_lng','end_lat','end_lng','trip_distance_km',
+    'member_casual','source_file','load_ts']
   )
 }}
 
