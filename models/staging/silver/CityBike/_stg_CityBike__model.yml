@@ -64,9 +64,6 @@ models:
       - name: city
         data_tests:
           - accepted_values: { arguments: { values: ['NY','JC'] } }
-      - name: first_seen
-      - name: last_seen
-      - name: num_appearances
 
   - name: slv_rideable_type
     description: 'Lookup: tipos de bicicleta CityBike'
