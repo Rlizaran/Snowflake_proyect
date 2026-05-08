@@ -77,6 +77,7 @@ DECLARE
     v_qid   VARCHAR;
     v_zero  NUMBER := 0;
 BEGIN
+    
     COPY INTO DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_NY (
         ride_id,
         rideable_type,
@@ -101,7 +102,7 @@ BEGIN
             CURRENT_TIMESTAMP()
         FROM @DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE
     )
-    PATTERN = '2024[0-9]{2}-citibike-tripdata\\.zip|202[5-9][0-9]{2}-citibike-tripdata\\.zip'
+    PATTERN = '202[4-9][0-9]{2}-citibike-tripdata\\.csv\\.zip'
     ON_ERROR = 'CONTINUE';
 
     -- Captura el query id del COPY para no perderlo con queries siguientes
@@ -282,5 +283,3 @@ EXCEPTION
         VALUES ('REFRESH CITYBIKE_JC STAGE', 'ERROR', :SQLERRM);
         RAISE;
 END;
-
-

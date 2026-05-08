@@ -37,7 +37,7 @@ renamed as (
         trim(m_flag) as m_flag,
         trim(q_flag) as q_flag,
         trim(s_flag) as s_flag,
-        obs_time,
+        coalesce(try_cast(obs_time as int), 2400) as obs_time
         source_file,
         load_ts
 
@@ -49,7 +49,7 @@ cleaned as (
     select
         *
     from renamed
-    where station_id in ('USW00094728', 'USW00014734')
+    where station_id is not null
       and observation_date >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
       and element in ('TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND', 'SNWD', 'WSF2', 'WSF5')
       and obs_time is not null
