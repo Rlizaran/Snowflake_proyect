@@ -40,5 +40,5 @@ LIMIT 30;
 -- Ultimos 20 eventos del log propio (procedures, drains, demos)
 SELECT *
 FROM LOGS.LOAD_LOG
-ORDER BY run_ts 
-DESC LIMIT 20;
+ORDER BY run_ts DESC 
+LIMIT 20;

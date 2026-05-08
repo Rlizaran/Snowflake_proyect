@@ -1,0 +1,46 @@
+-- Control de tasks Bronze: RESUME / SUSPEND / EXECUTE + verificaciones (CITYBIKE / NOAA)
+
+-- Conectar usuario, warehouse y database
+USE ROLE ROLE_NYCBIKE;
+USE WAREHOUSE WH_NYCBIKE_DEV;
+USE DATABASE DB_CITYBIKE_LOGS;
+USE SCHEMA PRO;
+
+-- Activar primero los hijos del DAG, despues los padres (regla Snowflake)
+ALTER TASK PRO.TSK_BRONZE_JC_DRAIN RESUME;
+ALTER TASK PRO.TSK_BRONZE_JC_ONFILES RESUME;
+ALTER TASK PRO.TSK_BRONZE_JC_REFRESH RESUME;
+ALTER TASK PRO.TSK_BRONZE_NOAA RESUME;
+ALTER TASK PRO.TSK_BRONZE_CITYBIKE RESUME;
+
+
+-- Suspender todo para ahorrar creditos (descomentar)
+-- ALTER TASK PRO.TSK_BRONZE_CITYBIKE SUSPEND;
+-- ALTER TASK PRO.TSK_BRONZE_NOAA SUSPEND;
+-- ALTER TASK PRO.TSK_BRONZE_JC_REFRESH SUSPEND;
+-- ALTER TASK PRO.TSK_BRONZE_JC_ONFILES SUSPEND;
+-- ALTER TASK PRO.TSK_BRONZE_JC_DRAIN SUSPEND;
+
+-- Ejecucion manual sin esperar el cron (forzar para demo)
+-- EXECUTE TASK DB_CITYBIKE_LOGS.PRO.TSK_BRONZE_CITYBIKE;
+-- EXECUTE TASK DB_CITYBIKE_LOGS.PRO.TSK_BRONZE_JC_REFRESH;
+
+-- Verificacion de tasks por schema
+SHOW TASKS IN SCHEMA DB_CITYBIKE_LOGS.PRO;
+
+-- Verificacion de streams por schema
+SHOW STREAMS IN SCHEMA DB_CITYBIKE_LOGS.PRO;
+
+-- Verificacion historial de ejecuciones de tasks (ultimos 7 dias)
+SELECT *
+FROM TABLE(DB_CITYBIKE_LOGS.INFORMATION_SCHEMA.TASK_HISTORY())
+WHERE NAME ILIKE '%TSK%' and SCHEMA_NAME ilike 'pro'
+ORDER BY scheduled_time DESC
+LIMIT 30;
+
+
+-- Ultimos 20 eventos del log propio (procedures, drains, demos)
+SELECT *
+FROM PRO.LOAD_LOG
+ORDER BY run_ts DESC 
+LIMIT 20;
