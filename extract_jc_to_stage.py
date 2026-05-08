@@ -79,7 +79,17 @@ def put(conn, csv_path, stage):
 
 def main():
     load_dotenv()
-    stage = os.environ.get("SF_STAGE", "DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE")
+    while True:
+        mode = input("Ingrese el entorno de destino (DEV, PRO): ").strip().upper()
+        if mode in ["DEV", "PRO"]:
+            break
+        print("Opción inválida. Por favor, ingrese DEV o PROD.")
+    db = os.environ.get(f"{mode}_SF_DATABASE")
+    stage = os.environ.get(f"{mode}_SF_STAGE")
+    schema = os.environ.get(f"{mode}_SF_SCHEMA")
+    print(f"Database: {db}")
+    print(f"Stage: {stage}")
+    print(f"Schema: {schema}")
     today = date.today()
     meses = months("202401", f"{today.year:04d}{today.month:02d}")
 
@@ -89,8 +99,8 @@ def main():
         password=os.environ["SF_PASSWORD"],
         role=os.environ.get("SF_ROLE"),
         warehouse=os.environ.get("SF_WAREHOUSE"),
-        database=os.environ.get("SF_DATABASE"),
-        schema=os.environ.get("SF_SCHEMA"),
+        database=db,
+        schema=schema,
     )
 
     try:
