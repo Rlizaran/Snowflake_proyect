@@ -52,9 +52,7 @@ select
     {{ dbt_utils.generate_surrogate_key(['member_casual']) }} as user_type_code,
     start_station_id,
     end_station_id,
-
-    -- Atributo de origen (no FK, solo categoria)
-    city,
+    {{ dbt_utils.generate_surrogate_key(['city']) }} as city_id,
 
     -- Linaje
     source_file,

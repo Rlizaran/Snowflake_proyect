@@ -189,3 +189,4 @@ logs/
 !models/**
 !models/.gitkeep
 !models/**/.gitkeep
+dbt_internal_packages/
