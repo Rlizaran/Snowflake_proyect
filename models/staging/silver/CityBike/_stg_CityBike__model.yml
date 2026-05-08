@@ -49,7 +49,7 @@ models:
         data_tests:
         - relationships:
             arguments: 
-              to: ref('slv_station')
+              to: ref('slv_city')
               field: city_id
 
   - name: slv_rideable_type

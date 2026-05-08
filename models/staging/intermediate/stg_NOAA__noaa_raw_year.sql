@@ -28,14 +28,10 @@ renamed as (
         to_date(observation_date, 'YYYYMMDD') as observation_date,
         trim(element) as element,
         try_to_decimal(data_value, 18, 2) as data_value,
-<<<<<<< HEAD
-        COALESCE(TRY_CAST(obs_time AS INT), 2400) as obs_time,
-=======
         trim(m_flag) as m_flag,
         trim(q_flag) as q_flag,
         trim(s_flag) as s_flag,
-        coalesce(try_cast(obs_time as int), 2400) as obs_time
->>>>>>> 99475784127c1d11161f30646db6b6f2b504e490
+        coalesce(try_cast(obs_time as int), 2400) as obs_time,
         source_file,
         load_ts
     from source
@@ -47,7 +43,6 @@ cleaned as (
     from renamed
     where station_id is not null
       and observation_date >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
-      and element in ('TMAX', 'TMIN', 'PRCP', 'SNOW', 'AWND', 'SNWD', 'WSF2', 'WSF5')
 )
 
 select * from cleaned
