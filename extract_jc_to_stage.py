@@ -86,10 +86,8 @@ def main():
         print("Opción inválida. Por favor, ingrese DEV o PROD.")
     db = os.environ.get(f"{mode}_SF_DATABASE")
     stage = os.environ.get(f"{mode}_SF_STAGE")
-    schema = os.environ.get(f"{mode}_SF_SCHEMA")
     print(f"Database: {db}")
     print(f"Stage: {stage}")
-    print(f"Schema: {schema}")
     today = date.today()
     meses = months("202401", f"{today.year:04d}{today.month:02d}")
 
@@ -100,7 +98,7 @@ def main():
         role=os.environ.get("SF_ROLE"),
         warehouse=os.environ.get("SF_WAREHOUSE"),
         database=db,
-        schema=schema,
+        schema=os.environ.get("SF_SCHEMA"),
     )
 
     try:
