@@ -1,11 +1,7 @@
 USE ROLE ROLE_NYCBIKE;
 USE WAREHOUSE WH_NYCBIKE_DEV;
-USE DATABASE DB_CITYBIKE_LOGS;
+USE DATABASE PRO_CITYBIKE_BRONZE;
 
--- Schema PRO dentro de DB_CITYBIKE_LOGS para alojar streams y tasks de produccion
-CREATE SCHEMA IF NOT EXISTS PRO
-    COMMENT = 'Streams y tasks para sync DEV -> PRO bronze';
-USE SCHEMA PRO;
 
 CREATE OR REPLACE TABLE DB_CITYBIKE_LOGS.PRO.LOAD_LOG (
     run_ts     TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
@@ -13,8 +9,61 @@ CREATE OR REPLACE TABLE DB_CITYBIKE_LOGS.PRO.LOAD_LOG (
     outcome    VARCHAR(32),
     details    VARCHAR(1024)
 );
+
+-- Tabla raw de viajes CityBike NYC (todo VARCHAR para preservar el dato original)
+CREATE OR REPLACE TABLE PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_NY (
+    ride_id               VARCHAR(256),
+    rideable_type         VARCHAR(256),
+    started_at            VARCHAR(256),
+    ended_at              VARCHAR(256),
+    start_station_name    VARCHAR(256),
+    start_station_id      VARCHAR(256),
+    end_station_name      VARCHAR(256),
+    end_station_id        VARCHAR(256),
+    start_lat             VARCHAR(256),
+    start_lng             VARCHAR(256),
+    end_lat               VARCHAR(256),
+    end_lng               VARCHAR(256),
+    member_casual         VARCHAR(256),
+    source_file           VARCHAR(256),
+    load_ts               TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Tabla raw de viajes CityBike Jersey City
+CREATE OR REPLACE TABLE PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_JC(
+    ride_id               VARCHAR(256),
+    rideable_type         VARCHAR(256),
+    started_at            VARCHAR(256),
+    ended_at              VARCHAR(256),
+    start_station_name    VARCHAR(256),
+    start_station_id      VARCHAR(256),
+    end_station_name      VARCHAR(256),
+    end_station_id        VARCHAR(256),
+    start_lat             VARCHAR(256),
+    start_lng             VARCHAR(256),
+    end_lat               VARCHAR(256),
+    end_lng               VARCHAR(256),
+    member_casual         VARCHAR(256),
+    source_file           VARCHAR(256),
+    load_ts               TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Tabla raw NOAA by year (3 anios completos, se filtra por estacion en Silver)
+CREATE OR REPLACE TABLE PRO_CITYBIKE_BRONZE.NOAA.NOAA_RAW_YEAR (
+    station_id          VARCHAR(256),
+    observation_date    VARCHAR(256),
+    element             VARCHAR(256),
+    data_value          VARCHAR(256),
+    m_flag              VARCHAR(256),
+    q_flag              VARCHAR(256),
+    s_flag              VARCHAR(256),
+    obs_time            VARCHAR(256),
+    source_file         VARCHAR(256),
+    load_ts             TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
 -- Procedure: carga incremental de CityBike NYC desde el bucket publico (2024 -> 2026+)
-CREATE OR REPLACE PROCEDURE LOAD_CITYBIKE_NY()
+CREATE OR REPLACE PROCEDURE PRO_CITYBIKE_BRONZE.CITYBIKE.LOAD_CITYBIKE_NY()
 RETURNS STRING
 LANGUAGE SQL
 AS
@@ -47,9 +96,9 @@ BEGIN
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
             SPLIT_PART(METADATA$FILENAME, '/', -1),
             CURRENT_TIMESTAMP()
-        FROM @DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE
+        FROM @PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE
     )
-    PATTERN = '202[4-9][0-9]{2}-citibike-tripdata\\.csv\\.zip'
+    PATTERN = '202[4-9][0-9]{2}-citibike-tripdata\\.zip'
     ON_ERROR = 'CONTINUE';
 
     -- Captura el query id del COPY para no perderlo con queries siguientes
@@ -81,7 +130,7 @@ EXCEPTION
 END;
 
 -- Procedure: carga incremental de CityBike Jersey City desde el landing stage interno
-CREATE OR REPLACE PROCEDURE LOAD_CITYBIKE_JC()
+CREATE OR REPLACE PROCEDURE PRO_CITYBIKE_BRONZE.CITYBIKE.LOAD_CITYBIKE_JC()
 RETURNS STRING
 LANGUAGE SQL
 AS
@@ -113,7 +162,7 @@ BEGIN
             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
             SPLIT_PART(METADATA$FILENAME, '/', -1),
             CURRENT_TIMESTAMP()
-        FROM @DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE
+        FROM @PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE
     )
     PATTERN = '.*JC-202[4-9][0-9]{2}-citibike-tripdata\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
@@ -148,7 +197,7 @@ END;
 
 
 -- Procedure: carga incremental de NOAA by year (3 anios completos)
-CREATE OR REPLACE PROCEDURE LOAD_NOAA_YEAR()
+CREATE OR REPLACE PROCEDURE PRO_CITYBIKE_BRONZE.NOAA.LOAD_NOAA_YEAR()
 RETURNS STRING
 LANGUAGE SQL
 AS
@@ -175,7 +224,7 @@ BEGIN
             $1,$2,$3,$4,$5,$6,$7,$8,
             SPLIT_PART(METADATA$FILENAME, '/', -1),
             CURRENT_TIMESTAMP()
-        FROM @DEV_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_YEAR
+        FROM @PRO_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_YEAR
     )
     PATTERN = '.*202[4-6]\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
@@ -209,7 +258,7 @@ EXCEPTION
 END;
 
 -- Procedure: refresca la directory table del stage interno antes del task de JC
-CREATE OR REPLACE PROCEDURE REFRESH_JC_STAGE()
+CREATE OR REPLACE PROCEDURE DB_CITYBIKE_LOGS.PRO.REFRESH_JC_STAGE()
 RETURNS STRING
 LANGUAGE SQL
 AS
@@ -217,7 +266,7 @@ DECLARE
     v_rows  NUMBER := 0;
     v_files NUMBER := 0;
 BEGIN
-    ALTER STAGE DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE REFRESH;
+    ALTER STAGE PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE REFRESH;
     -- ALTER STAGE no genera RESULT_SCAN utilizable; se loguea directamente
     INSERT INTO DB_CITYBIKE_LOGS.PRO.LOAD_LOG (task_name, outcome, details)
     VALUES ('REFRESH CITYBIKE_JC STAGE', 'OK', 'Stage refrescado correctamente');
@@ -230,3 +279,10 @@ EXCEPTION
         VALUES ('REFRESH CITYBIKE_JC STAGE', 'ERROR', :SQLERRM);
         RAISE;
 END;
+
+
+
+
+
+
+
