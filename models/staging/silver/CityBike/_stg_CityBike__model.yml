@@ -46,13 +46,14 @@ models:
         description: 'FK a slv_station (origen del viaje)'
       - name: end_station_id
         description: 'FK a slv_station (destino del viaje)'
-      - name: city
-        description: 'Ciudad de origen del dataset (NY o JC)'
+      - name: city_id
+        description: 'FK de slv_city'
         data_tests:
-          - accepted_values:
-              arguments: { values: ['NY','JC'] }
+          - relationships:
+              arguments: 
+                to: ref('slv_city')
+                field: city_id
 
-  # FIX: antes era 'slv_station' (no existe). Reemplazado por slv_city con sus columnas reales.
   - name: slv_city
     description: 'Lookup de ciudades CityBike (NY, JC) con surrogate key.'
     columns:
