@@ -11,7 +11,10 @@ with bronze_valid_ny as (
       and try_to_timestamp_ntz(started_at) >= '2024-01-01'::timestamp_ntz
       and try_to_timestamp_ntz(ended_at) is not null
       and try_to_timestamp_ntz(ended_at) > try_to_timestamp_ntz(started_at)
-      and end_station_id is not null
+      and start_station_id is not null
+      and start_station_id not ilike '%SYS%'
+      and end_station_id is not null 
+      and end_station_id not ilike '%SYS%'
       and lower(trim(rideable_type)) in ('classic_bike','electric_bike')
       and lower(trim(member_casual)) in ('member','casual')
 ),
@@ -24,7 +27,10 @@ bronze_valid_jc as (
       and try_to_timestamp_ntz(started_at) >= '2024-01-01'::timestamp_ntz
       and try_to_timestamp_ntz(ended_at) is not null
       and try_to_timestamp_ntz(ended_at) > try_to_timestamp_ntz(started_at)
-      and end_station_id is not null
+      and start_station_id is not null
+      and start_station_id not ilike '%SYS%'
+      and end_station_id is not null 
+      and end_station_id not ilike '%SYS%'
       and lower(trim(rideable_type)) in ('classic_bike','electric_bike')
       and lower(trim(member_casual)) in ('member','casual')
 ),

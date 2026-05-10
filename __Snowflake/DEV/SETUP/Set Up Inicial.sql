@@ -45,9 +45,13 @@ CREATE OR REPLACE DATABASE PRO_CITYBIKE_GOLD
 CREATE OR REPLACE DATABASE DB_CITYBIKE_LOGS
     COMMENT = 'database para alojar tablas, stages, streams, tasks';
 
--- Schema LOGS dentro de DB_CITYBIKE_LOGS para alojar tablas, stages, streams, tasks
+-- Schema LOGS dentro de DB_CITYBIKE_LOGS para streams/tasks/log de DEV
 CREATE OR REPLACE SCHEMA DB_CITYBIKE_LOGS.LOGS
-    COMMENT = 'Tablas raw, stages, file formats, streams y tasks';
+    COMMENT = 'Streams, tasks y LOAD_LOG de DEV';
+
+-- Schema PRO dentro de DB_CITYBIKE_LOGS para streams/tasks/log de PRO
+CREATE OR REPLACE SCHEMA DB_CITYBIKE_LOGS.PRO
+    COMMENT = 'Streams, tasks y LOAD_LOG de PRO';
 
 -- Schema CITYBIKE dentro de DEV_CITYBIKE_BRONZE para alojar tablas, stages
 CREATE OR REPLACE SCHEMA DEV_CITYBIKE_BRONZE.CITYBIKE

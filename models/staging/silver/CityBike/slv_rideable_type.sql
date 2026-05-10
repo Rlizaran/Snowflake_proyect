@@ -1,17 +1,11 @@
 -- Silver lookup: tipos de bicicleta CityBike + descripcion y flags derivados (valor fijo: classic, electric)
+-- FIX: removido 'where rideable_type is not null' (stg ya filtra; era redundante).
 -- Materializado como VIEW (default del proyecto): solo 2-3 filas, computar al vuelo es trivial
 -- y evita la sobrecarga de incremental sobre un dominio cerrado que no crece.
 
-with
-
-distinct_types as (
+with distinct_types as (
     select distinct rideable_type
-    from {{ ref('stg_CityBike__citybike_trips_ny') }}
-    where rideable_type is not null
-    union
-    select distinct rideable_type
-    from {{ ref('stg_CityBike__citybike_trips_jc') }}
-    where rideable_type is not null
+    from {{ ref('stg_CityBike__citybike_trips') }}
 )
 
 select

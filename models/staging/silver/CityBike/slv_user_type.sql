@@ -1,17 +1,10 @@
 -- Silver lookup: tipos de usuario CityBike + descripcion (valor fijo: member, casual)
--- Materializado como VIEW (default del proyecto): dominio cerrado de 2 valores,
--- no tiene sentido persistirlo ni hacerlo incremental.
+-- FIX: removido 'where member_casual is not null' (stg ya filtra; era redundante).
+-- Materializado como VIEW (default del proyecto): dominio cerrado de 2 valores.
 
-with
-
-distinct_types as (
+with distinct_types as (
     select distinct member_casual
-    from {{ ref('stg_CityBike__citybike_trips_ny') }}
-    where member_casual is not null
-    union
-    select distinct member_casual
-    from {{ ref('stg_CityBike__citybike_trips_jc') }}
-    where member_casual is not null
+    from {{ ref('stg_CityBike__citybike_trips') }}
 )
 
 select

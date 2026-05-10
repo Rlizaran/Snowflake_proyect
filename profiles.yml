@@ -1,7 +1,10 @@
 # Profile dbt para Snowflake. La base de datos se decide con DBT_ENVIRONMENTS:
 #   export DBT_ENVIRONMENTS=DEV   -> DEV_CITYBIKE_SILVER
 #   export DBT_ENVIRONMENTS=PRO   -> PRO_CITYBIKE_SILVER
-# Mover a ~/.dbt/profiles.yml o exportar DBT_PROFILES_DIR=. para que dbt lo lea desde aqui
+# Mover a ~/.dbt/profiles.yml o exportar DBT_PROFILES_DIR=. para que dbt lo lea desde aqui.
+# FIX: default 'FAIL' (antes 'DEV'). Asi si DBT_ENVIRONMENTS no esta seteado, dbt falla rapido
+# con "FAIL_CITYBIKE_SILVER no existe" en vez de escribir silenciosamente sobre DEV.
+# Coincide con el default que ya tenia dbt_project.yml.
 
 snowflake_proyect:
   target: default
@@ -13,7 +16,7 @@ snowflake_proyect:
       password: "{{ env_var('SF_PASSWORD') }}"
       role: "{{ env_var('SF_ROLE', 'ROLE_NYCBIKE') }}"
       warehouse: "{{ env_var('SF_WAREHOUSE', 'WH_NYCBIKE_DEV') }}"
-      database: "{{ env_var('DBT_ENVIRONMENTS', 'DEV') }}_CITYBIKE_SILVER"
+      database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       schema: "{{ env_var('SF_SCHEMA', 'CITYBIKE') }}"
       threads: 4
       client_session_keep_alive: false

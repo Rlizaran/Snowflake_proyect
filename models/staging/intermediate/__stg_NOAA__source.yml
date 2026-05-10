@@ -1,3 +1,5 @@
+# FIX: descripcion de obs_time corregida de 'HHMMSS' a 'HHMM' (NOAA GHCN-Daily lo publica
+# como 4 digitos; el snapshot castea con coalesce(..., 2400)).
 version: 2
 
 # Sources: tablas Bronze del schema NOAA en {DEV_,PRO_}CITYBIKE_BRONZE
@@ -51,7 +53,7 @@ sources:
             description: 'Source flag'
             data_type: varchar
           - name: obs_time
-            description: 'Hora de la observacion (HHMMSS)'
+            description: 'Hora de la observacion (HHMM, 4 digitos; default 2400 si NULL)'
             data_type: varchar
           - name: source_file
             description: 'Nombre del archivo NOAA por anio'
