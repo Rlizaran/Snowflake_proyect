@@ -1,18 +1,16 @@
--- Stg NY: cast + clean + enriquecimiento de viajes Manhattan, incremental APPEND
--- Estrategia: append (filtrado por load_ts > max actual)
--- Justificacion: CityBike publica archivos mensuales inmutables. Una vez subido un mes
--- en bronze, ride_id no cambia. No hay updates, solo nuevos meses. Append es la
--- estrategia mas barata (no escanea target para hacer matching como merge) y
--- evita la sobrecarga de delete+insert que aqui no aporta nada.
+-- Stg NY: cast + clean + enriquecimiento de viajes Manhattan, incremental MERGE.
+-- FIX: ANTES era append. Con append + filtro 'load_ts > max(load_ts)', si bronze reprocesa
+-- un mes (re-COPY del mismo CSV o pipeline DEV ejecutado dos veces), cada ride_id volvia a
+-- entrar como fila nueva => DUPLICADOS. Esto explica que DEV tuviera el doble de filas
+-- que PRO. MERGE sobre ride_id colapsa esos duplicados (UPDATE de la fila existente).
+-- Defensa adicional: 'qualify row_number()' dedupea dentro del propio batch antes del MERGE
+-- por si bronze trae varias versiones del mismo ride_id en una sola tanda.
 {{
   config(
     materialized='incremental',
     incremental_strategy='merge',
     unique_key='ride_id',
-    merge_update_columns=['rideable_type','started_at','ended_at',
-    'trip_duration_min','start_station_name','start_station_id','end_station_name',
-    'end_station_id','start_lat','start_lng','end_lat','end_lng','trip_distance_km',
-    'member_casual','source_file','load_ts']
+    merge_update_columns=['rideable_type','started_at','ended_at','trip_duration_min','start_station_name','start_station_id','end_station_name','end_station_id','start_lat','start_lng','end_lat','end_lng','trip_distance_km','member_casual','source_file','load_ts']
   )
 }}
 
@@ -21,7 +19,7 @@ with source as (
     select * from {{ source('CityBike', 'citybike_trips_ny') }}
 
     {% if is_incremental() %}
-        -- Solo procesa filas con load_ts mas reciente que lo ya cargado
+        -- Filtra bronze por load_ts reciente para reducir el set a mergear
         where load_ts > (select coalesce(max(load_ts), '1900-01-01'::timestamp_ntz) from {{ this }})
     {% endif %}
 
@@ -51,8 +49,7 @@ casted as (
 ),
 
 cleaned as (
-    select
-        *
+    select *
     from casted
     where ride_id is not null
       and started_at is not null
@@ -62,6 +59,12 @@ cleaned as (
       and end_station_id is not null
       and rideable_type in ('classic_bike', 'electric_bike')
       and member_casual in ('member', 'casual')
+),
+
+-- Defensa: dedupe dentro del batch antes del MERGE. Conserva la fila con load_ts mas reciente.
+deduped as (
+    select * from cleaned
+    qualify row_number() over (partition by ride_id order by load_ts desc) = 1
 ),
 
 enriched as (
@@ -84,7 +87,7 @@ enriched as (
         'NY' as city,
         source_file,
         load_ts
-    from cleaned
+    from deduped
 )
 
 select * from enriched

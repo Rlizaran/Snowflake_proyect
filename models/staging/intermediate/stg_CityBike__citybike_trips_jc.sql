@@ -1,18 +1,13 @@
--- Stg JC: cast + clean + enriquecimiento de viajes Jersey City, incremental MERGE
--- Estrategia: merge sobre ride_id
--- Justificacion: el script Python (extract_jc_to_stage.py) sube los meses al
--- landing stage; aunque es idempotente, podemos re-subir un mes corregido (mismo
--- ride_id con datos actualizados). Merge sobreescribe la fila existente sin
--- duplicar el ride_id. Append podria duplicar si re-procesamos un mes.
+-- Stg JC: cast + clean + enriquecimiento de viajes Jersey City, incremental MERGE.
+-- Sin cambios de estrategia (ya era merge). Anadido 'qualify row_number()' como defensa
+-- in-batch: si bronze trae varias versiones del mismo ride_id en una sola tanda, el MERGE
+-- falla con error "duplicate key" (Snowflake exige 1 fila por unique_key en el origen).
 {{
   config(
     materialized='incremental',
     incremental_strategy='merge',
     unique_key='ride_id',
-    merge_update_columns=['rideable_type','started_at','ended_at',
-    'trip_duration_min','start_station_name','start_station_id','end_station_name',
-    'end_station_id','start_lat','start_lng','end_lat','end_lng','trip_distance_km',
-    'member_casual','source_file','load_ts']
+    merge_update_columns=['rideable_type','started_at','ended_at','trip_duration_min','start_station_name','start_station_id','end_station_name','end_station_id','start_lat','start_lng','end_lat','end_lng','trip_distance_km','member_casual','source_file','load_ts']
   )
 }}
 
@@ -51,8 +46,7 @@ casted as (
 ),
 
 cleaned as (
-    select
-        *
+    select *
     from casted
     where ride_id is not null
       and started_at is not null
@@ -62,6 +56,12 @@ cleaned as (
       and end_station_id is not null
       and rideable_type in ('classic_bike', 'electric_bike')
       and member_casual in ('member', 'casual')
+),
+
+-- Defensa: dedupe in-batch antes del MERGE (Snowflake exige 1 fila por unique_key en source)
+deduped as (
+    select * from cleaned
+    qualify row_number() over (partition by ride_id order by load_ts desc) = 1
 ),
 
 enriched as (
@@ -84,7 +84,7 @@ enriched as (
         'JC' as city,
         source_file,
         load_ts
-    from cleaned
+    from deduped
 )
 
 select * from enriched

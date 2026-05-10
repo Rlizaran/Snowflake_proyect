@@ -1,3 +1,5 @@
+# FIX: el bloque 'slv_station' documentaba un modelo inexistente.
+# El archivo real es slv_city.sql (city_id + city). Reemplazado por bloque slv_city.
 version: 2
 
 models:
@@ -44,13 +46,26 @@ models:
         description: 'FK a slv_station (origen del viaje)'
       - name: end_station_id
         description: 'FK a slv_station (destino del viaje)'
-      - name: city_id
-        description: 'FK a slv_station'
+      - name: city
+        description: 'Ciudad de origen del dataset (NY o JC)'
         data_tests:
-        - relationships:
-            arguments: 
-              to: ref('slv_city')
-              field: city_id
+          - accepted_values:
+              arguments: { values: ['NY','JC'] }
+
+  # FIX: antes era 'slv_station' (no existe). Reemplazado por slv_city con sus columnas reales.
+  - name: slv_city
+    description: 'Lookup de ciudades CityBike (NY, JC) con surrogate key.'
+    columns:
+      - name: city_id
+        description: 'Surrogate key MD5(city)'
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+      - name: city
+        data_tests:
+          - unique: { config: { severity: error } }
+          - not_null
+          - accepted_values: { arguments: { values: ['NY','JC'] } }
 
   - name: slv_rideable_type
     description: 'Lookup: tipos de bicicleta CityBike'
@@ -103,15 +118,3 @@ models:
       - name: week_of_year
       - name: day_of_year
       - name: season
-  
-  - name: slv_city
-    description: 'Ciudades'
-    columns:
-      - name: city_id
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
-      - name: city
-    
-      
-      
