@@ -6,12 +6,7 @@ with
 
 distinct_dates as (
     select distinct started_at::DATE as date_day
-    from {{ ref('stg_CityBike__citybike_trips_ny') }}
-    where started_at is not null 
-      and started_at >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
-    union
-    select distinct started_at::DATE as date_day
-    from {{ ref('stg_CityBike__citybike_trips_jc') }}
+    from {{ ref('stg_CityBike__citybike_trips') }}
     where started_at is not null 
       and started_at >= TO_DATE(20240101::VARCHAR, 'YYYYMMDD')
     union

@@ -5,29 +5,16 @@
 -- una vez y los downstream (marts, PBI) se benefician del resultado pre-calculado.
 {{
   config(
-    materialized='table',
-    snowflake_warehouse='WH_ANALISIS'
+    materialized='table'
   )
 }}
 
-with
-
-ny as (
-    select * from {{ ref('stg_CityBike__citybike_trips_ny') }}
-),
-
-jc as (
-    select * from {{ ref('stg_CityBike__citybike_trips_jc') }}
-),
-
-unioned as (
-    select * from ny
-    union all
-    select * from jc
+with trips as (
+    select * from {{ ref('stg_CityBike__citybike_trips') }}
 ),
 
 deduplicated as (
-    select * from unioned
+    select * from trips
     qualify row_number() over (
         partition by ride_id 
         order by load_ts desc, started_at desc
@@ -45,7 +32,6 @@ select
     started_at,
     ended_at,
     trip_duration_min,
-    trip_distance_km,
 
     -- FKs a lookups y dimensiones
     {{ dbt_utils.generate_surrogate_key(['rideable_type']) }} as rideable_type_code,

@@ -1,19 +1,14 @@
 -- Snapshot SCD2 sobre noaa_raw_year (Bronze).
 -- NOAA reescribe el archivo del anio cuando publica correcciones de q_flag / data_value.
 -- Strategy 'check' sobre las cols que cambian (data_value, q_flag, m_flag, s_flag).
--- Cluster por year(observation_date): anios cerrados ya no mutan -> Snowflake hace pruning
--- casi total y el mantenimiento del cluster solo toca anios "calientes" (en curso + anterior).
---
--- FIX A: linea 30 anterior tenia 'trim()' (vacio) -> error de sintaxis. Cambiado a 'trim(element)'.
--- FIX B: factor de escalado era '/100' -> NOAA publica en DECIMAS (factor 10), no centesimas.
--- Con /100, TMAX=220 daba 2.2 (deberia ser 22.0 C). Cambiado a '/10'.
--- FIX C: removido snowflake_warehouse='WH_ANALISIS' override (usar el WH default del profile).
+-- Cluster por year(observation_date): anios cerrados ya no mutan
 
 {% snapshot snp_NOAA__noaa_raw_year %}
 
 {{
     config(
         target_database=env_var('DBT_ENVIRONMENTS', 'FAIL') ~ '_CITYBIKE_SILVER',
+        snowflake_warehouse='WH_ANALISIS',
         target_schema='snapshots',
         unique_key='scd_key',
         strategy='check',
@@ -35,9 +30,9 @@ with src as (
                 then round(try_to_decimal(data_value, 18, 2) / 10, 2)
             else try_to_decimal(data_value, 18, 2)
         end as data_value,
-        trim(m_flag) as m_flag,
-        trim(q_flag) as q_flag,
-        trim(s_flag) as s_flag,
+        coalesce(nullif(trim(m_flag), ''), ' ') as m_flag,
+        coalesce(nullif(trim(q_flag), ''), ' ') as q_flag,
+        coalesce(nullif(trim(s_flag), ''), ' ') as s_flag,
         coalesce(try_cast(obs_time as int), 2400) as obs_time,
         source_file,
         load_ts
