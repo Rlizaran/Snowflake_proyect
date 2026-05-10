@@ -3,6 +3,11 @@
 -- Strategy 'check' sobre las cols que cambian (data_value, q_flag, m_flag, s_flag).
 -- Cluster por year(observation_date): anios cerrados ya no mutan -> Snowflake hace pruning
 -- casi total y el mantenimiento del cluster solo toca anios "calientes" (en curso + anterior).
+--
+-- FIX A: linea 30 anterior tenia 'trim()' (vacio) -> error de sintaxis. Cambiado a 'trim(element)'.
+-- FIX B: factor de escalado era '/100' -> NOAA publica en DECIMAS (factor 10), no centesimas.
+-- Con /100, TMAX=220 daba 2.2 (deberia ser 22.0 C). Cambiado a '/10'.
+-- FIX C: removido snowflake_warehouse='WH_ANALISIS' override (usar el WH default del profile).
 
 {% snapshot snp_NOAA__noaa_raw_year %}
 
@@ -14,7 +19,6 @@
         strategy='check',
         check_cols=['data_value', 'q_flag', 'm_flag', 's_flag'],
         invalidate_hard_deletes=False,
-        snowflake_warehouse='WH_ANALISIS',
         cluster_by=['year(observation_date)'],
         transient=False
     )
@@ -27,13 +31,14 @@ with src as (
         to_date(observation_date, 'YYYYMMDD') as observation_date,
         trim(element) as element,
         case
-            when trim() in ('TMAX','TMIN','PRCP','AWND','WSF2','WSF5') then round(try_to_decimal(data_value,18,2)/100, 2)
-            else try_to_decimal(data_value, 18, 2) 
+            when trim(element) in ('TMAX','TMIN','PRCP','AWND','WSF2','WSF5')
+                then round(try_to_decimal(data_value, 18, 2) / 10, 2)
+            else try_to_decimal(data_value, 18, 2)
         end as data_value,
         trim(m_flag) as m_flag,
         trim(q_flag) as q_flag,
         trim(s_flag) as s_flag,
-        coalesce(try_cast(obs_time as int), 2400)     as obs_time,
+        coalesce(try_cast(obs_time as int), 2400) as obs_time,
         source_file,
         load_ts
     from {{ source('NOAA', 'noaa_raw_year') }}

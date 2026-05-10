@@ -1,16 +1,15 @@
 # ============================================================================
 # dbt_project.yml - Pipeline medallion CityBike + NOAA en Snowflake
-# FIX (ronda 3): anadido +snowflake_warehouse: WH_ANALISIS tambien a
-# stg_CityBike__citybike_trips_jc para consistencia con NY (mismo dataset, mismo perfil de carga).
+# FIX (ronda 6): removidos todos los +snowflake_warehouse: WH_ANALISIS overrides.
+# Tras el primer dbt run completo, el resto son updates incrementales pequenios
+# y el WH default (WH_NYCBIKE_DEV / WH_NYCBIKE_PRO) basta sin tardar mucho.
 # ============================================================================
 name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
 
-# El profile debe coincidir con la llave en profiles.yml
 profile: 'snowflake_proyect'
 
-# Snowflake guarda identificadores en mayusculas; sin quoting evita conflictos
 quoting:
   database: false
   schema: false
@@ -53,11 +52,7 @@ models:
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       intermediate:
         +schema: intermediate
-        # FIX: ambos stg comparten WH_ANALISIS (datasets de tamano similar, mismo workload)
-        stg_CityBike__citybike_trips_ny:
-          +snowflake_warehouse: WH_ANALISIS
-        stg_CityBike__citybike_trips_jc:
-          +snowflake_warehouse: WH_ANALISIS
+        # FIX: removidos +snowflake_warehouse overrides para NY y JC. Usar WH default.
 
       # ----------------------------------------------------------------------
       # SILVER normalizado - slv_* con PKs/FKs explicitas

@@ -1,6 +1,8 @@
 -- Silver SCD2 expuesto para BI: TODAS las versiones del snapshot NOAA (vigentes + reemplazadas).
 -- A diferencia de slv_weather_observation (solo vigente), este expone la historia para que en
 -- Power BI se puedan medir correcciones de NOAA por anio/estacion/elemento.
+-- FIX: anadidas columnas data_value (escalada) y data_value_raw (NOAA original). Antes solo
+-- exponia el valor crudo y BI tenia que aplicar /10 ad-hoc.
 -- Materializado como VIEW (default proyecto): el snapshot ya esta materializado y clusterizado.
 -- Filtros utiles en BI:
 --   is_current = TRUE      -> dato vigente (lo que cuenta para metricas finales)
@@ -19,11 +21,20 @@ select
     scd_key,
     station_id,
     observation_date,
-    year(observation_date) as observation_year,
+    year(observation_date)    as observation_year,
     quarter(observation_date) as observation_quarter,
-    month(observation_date) as observation_month,
-    element as element_code,
-    data_value,
+    month(observation_date)   as observation_month,
+    element                   as element_code,
+
+    -- Valor escalado a unidad real (mismo tratamiento que stg)
+    case
+        when element in ('TMAX','TMIN','PRCP','AWND','WSF2','WSF5') then data_value / 10
+        else data_value
+    end as data_value,
+
+    -- Valor original NOAA (para auditoria contra bronze / ver el delta entre versiones)
+    data_value as data_value_raw,
+
     m_flag,
     q_flag,
     s_flag,

@@ -1,6 +1,11 @@
-# FIX: anadido bloque para slv_weather_observation_history (modelo nuevo) y para
-# stg_NOAA__noaa_raw_year (ahora expone columnas SCD2 dbt_valid_from / dbt_updated_at).
-# Sustituye al original en /models/staging/silver/NOAA/_stg_NOAA__model.yml.
+# FIX (ronda 6): bajado a severity:warn el test relationships de
+# slv_weather_observation.station_id -> slv_weather_station.
+# Razon: el snapshot ya NO filtra por las 2 estaciones del proyecto (mantenemos todas las US
+# disponibles para el futuro fct_us_temperature en Gold). slv_weather_station tiene solo 2
+# estaciones hardcoded -> el test fallaria sistematicamente con error.
+# Cuando se cree una dim ampliada (slv_weather_station_us con todas las del proyecto US-wide)
+# se puede subir de nuevo a 'error'. O mantener como warn si la asimetria es intencional.
+
 version: 2
 
 models:
@@ -37,9 +42,12 @@ models:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_id
-        description: 'Unique station id per city. join with slv_weather_station'
+        description: 'Unique station id per city. join with slv_weather_station (filtra a las 2 estaciones del proyecto)'
         data_tests:
+          # FIX: severity:warn porque slv_weather_station es subset (2 estaciones) del universo de observation
           - relationships:
+              config:
+                severity: warn
               arguments:
                 to: ref('slv_weather_station')
                 field: station_id
@@ -127,7 +135,7 @@ models:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: slv_weather_station
-    description: 'Dimension de estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC)'
+    description: 'Dimension de estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC). Subset del universo en slv_weather_observation.'
     columns:
       - name: station_id
         data_tests:
