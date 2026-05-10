@@ -1,0 +1,32 @@
+# ============================================================================
+# _snapshots.yml — Documentación + tests sobre los snapshots
+# ============================================================================
+# los snapshots también se les pueden añadir tests. Especialmente útil
+# para validar la integridad del historial (que dbt_valid_from < dbt_valid_to,
+# que solo hay una versión "vigente" por unique_key, etc.).
+# ============================================================================
+
+version: 2
+
+snapshots:
+
+  - name: snp_NOAA__noaa_raw_year
+    description: >
+      Snapshot de los valores de las temperaturas. Captura cambios en
+      las columnas 'data_value', 'q_flag', 'm_flag', 's_flag' usando load_ts como timestamp de modificación.
+    columns:
+      - name: scd_key
+        description: PK compuesto del registro origen.
+      - name: station_id
+        description: FK de la estacion donde se tomo la muestra.
+        data_tests:
+          - unique
+          - not_null
+      - name: observation_date
+        description: Timestamp de la observacion.
+        data_tests:
+          - not_null
+      - name: load_ts
+        description: Timestamp desde el que esta versión es válida.
+        data_tests:
+          - not_null
