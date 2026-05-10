@@ -102,7 +102,7 @@ BEGIN
             CURRENT_TIMESTAMP()
         FROM @DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_S3_STAGE
     )
-    PATTERN = '202[4-9][0-9]{2}-citibike-tripdata\\.csv\\.zip'
+    PATTERN = '202[4-9][0-9]{2}-citibike-tripdata\\.zip'
     ON_ERROR = 'CONTINUE';
 
     -- Captura el query id del COPY para no perderlo con queries siguientes
