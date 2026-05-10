@@ -4,10 +4,7 @@
 
 with distinct_types as (
     select distinct member_casual
-    from {{ ref('stg_CityBike__citybike_trips_ny') }}
-    union
-    select distinct member_casual
-    from {{ ref('stg_CityBike__citybike_trips_jc') }}
+    from {{ ref('stg_CityBike__citybike_trips') }}
 )
 
 select

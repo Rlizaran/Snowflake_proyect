@@ -1,8 +1,53 @@
-# FIX: el bloque 'slv_station' documentaba un modelo inexistente.
-# El archivo real es slv_city.sql (city_id + city). Reemplazado por bloque slv_city.
 version: 2
 
 models:
+  - name: stg_CityBike_citybike_trips
+    description: >
+      Modelo incremental que unifica los viajes de New York (NY) y Jersey City (JC). 
+    columns:
+      - name: ride_id
+        description: "Identificador único de cada viaje (Clave Primaria)."
+        tests:
+          - unique
+          - not_null
+      - name: city
+        description: "Ciudad de origen: 'Manhattan' o 'Jersey City'."
+        tests:
+          - accepted_values:
+              values: ['Manhattan', 'Jersey City']
+      - name: started_at
+        description: "Timestamp de inicio del viaje. Filtrado para ser >= 2024-01-01."
+        tests:
+          - not_null
+      - name: ended_at
+        description: "Timestamp de fin del viaje. Validado para ser posterior a started_at."
+        tests:
+          - not_null
+      - name: trip_duration_min
+        description: "Duración calculada del viaje en minutos."
+      - name: rideable_type
+        description: "Tipo de bicicleta utilizada."
+        tests:
+          - accepted_values:
+              values: ['classic_bike', 'electric_bike']
+      - name: start_station_id
+        description: "ID de la estación de inicio. Validado contra nulos en la capa de limpieza."
+        tests:
+          - not_null
+      - name: end_station_id
+        description: "ID de la estación de destino. Validado contra nulos en la capa de limpieza."
+        tests:
+          - not_null
+      - name: member_casual
+        description: "Tipo de usuario (Suscrito o Casual)."
+        tests:
+          - accepted_values:
+              values: ['member', 'casual']
+      - name: load_ts
+        description: "Timestamp de carga desde el sistema origen. Se usa para la lógica incremental."
+        tests:
+          - not_null
+
   - name: slv_trip
     description: 'Fact normalizado: un row por viaje (NY+JC unidos), con FKs explicitas y atributos derivados (duracion, distancia)'
     columns:
@@ -26,8 +71,6 @@ models:
       - name: ended_at
       - name: trip_duration_min
         description: 'Minutos entre started_at y ended_at (derivado en stg)'
-      - name: trip_distance_km
-        description: 'Great-circle distance start->end en km (derivado en stg)'
       - name: rideable_type_code
         description: 'FK a slv_rideable_type'
         data_tests:
@@ -44,8 +87,18 @@ models:
                 field: user_type_code
       - name: start_station_id
         description: 'FK a slv_station (origen del viaje)'
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('slv_station')
+                field: station_id
       - name: end_station_id
         description: 'FK a slv_station (destino del viaje)'
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('slv_station')
+                field: station_id        
       - name: city_id
         description: 'FK de slv_city'
         data_tests:
@@ -66,7 +119,7 @@ models:
         data_tests:
           - unique: { config: { severity: error } }
           - not_null
-          - accepted_values: { arguments: { values: ['NY','JC'] } }
+          - accepted_values: { arguments: { values: ['Manhattan','Jersey City'] } }
 
   - name: slv_rideable_type
     description: 'Lookup: tipos de bicicleta CityBike'
@@ -119,3 +172,21 @@ models:
       - name: week_of_year
       - name: day_of_year
       - name: season
+
+  - name: slv_station
+    description: 'unique stations from NY and JC'
+    columns:
+      - name: station_id
+        description: 'PK de estaciones'
+        data_tests:
+          - unique
+          - not_null
+      - name: station_name
+        description: 'nombre de estacion'
+        data_type: varchar
+      - name: lat
+        description: 'latitud'
+        data_type: real
+      - name: lng
+        description: 'longitud'
+        data_type: real

@@ -42,6 +42,12 @@ clean-targets:
 models:
   +transient: false
   snowflake_proyect:
+    +snowflake_warehouse: >
+      {%- if flags.FULL_REFRESH or flags.WHICH == 'build' -%}
+        WH_ANALISIS
+      {%- else -%}
+        WH_NYCBIKE_DEV
+      {%- endif -%}
 
     # ------------------------------------------------------------------------
     # STAGING - cast 1:1 desde Bronze (Capa Silver, schema intermediate)
