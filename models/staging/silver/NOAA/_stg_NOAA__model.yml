@@ -1,6 +1,5 @@
-# FIX (ronda 6): bajado a severity:warn el test relationships de
 # slv_weather_observation.station_id -> slv_weather_station.
-# Razon: el snapshot ya NO filtra por las 2 estaciones del proyecto (mantenemos todas las US
+# el snapshot ya NO filtra por las 2 estaciones del proyecto (mantenemos todas las US
 # disponibles para el futuro fct_us_temperature en Gold). slv_weather_station tiene solo 2
 # estaciones hardcoded -> el test fallaria sistematicamente con error.
 # Cuando se cree una dim ampliada (slv_weather_station_us con todas las del proyecto US-wide)
