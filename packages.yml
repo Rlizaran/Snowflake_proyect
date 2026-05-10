@@ -1,3 +1,6 @@
+# FIX: anadido godatadriven/dbt_date 0.17.2. El package-lock.yml ya lo listaba; alguien lo
+# quito de packages.yml sin re-correr 'dbt deps'. Si NO se usa, eliminar de aqui Y regenerar
+# el lock con 'dbt deps' para mantener ambos archivos sincronizados.
 packages:
   - package: dbt-labs/dbt_utils
     version: 1.3.3
@@ -5,3 +8,5 @@ packages:
     version: 0.14.0
   - package: metaplane/dbt_expectations
     version: 0.10.10
+  - package: godatadriven/dbt_date
+    version: 0.17.2
