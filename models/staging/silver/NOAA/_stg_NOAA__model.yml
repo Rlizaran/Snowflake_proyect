@@ -37,7 +37,7 @@ models:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_id
-        description: 'FK a slv_weather_station'
+        description: 'Unique station id per city. join with slv_weather_station'
         data_tests:
           - relationships:
               arguments:

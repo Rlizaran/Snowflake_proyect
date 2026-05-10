@@ -20,9 +20,9 @@ pivoted as (
         o.station_id,
         o.observation_date,
         s.city,
-        round(max(case when o.element_code = 'TMAX' then o.data_value end)/10,2) as temp_max_c,
-        round(max(case when o.element_code = 'TMIN' then o.data_value end)/10,2) as temp_min_c,
-        round(max(case when o.element_code = 'PRCP' then o.data_value end)/10,2) as precipitation_mm,
+        max(case when o.element_code = 'TMAX' then o.data_value end) as temp_max_c,
+        max(case when o.element_code = 'TMIN' then o.data_value end) as temp_min_c,
+        max(case when o.element_code = 'PRCP' then o.data_value end) as precipitation_mm,
         max(case when o.element_code = 'SNOW' then o.data_value end) as snowfall_mm,
         max(case when o.element_code = 'SNWD' then o.data_value end) as snow_depth_mm
     from obs o
