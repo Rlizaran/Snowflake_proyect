@@ -85,8 +85,8 @@ cleaned as (
       and member_casual in ('member', 'casual')
       and start_station_id is not null 
       and start_station_id not ilike '%SYS%'
-      and end_station_id is not null 
-      and end_station_name not ilike '%SYS%'
+      and end_station_id is not null
+      and end_station_id not ilike '%SYS%'
 ),
 
 -- Defensa: dedupe dentro del batch antes del MERGE. Conserva la fila con load_ts mas reciente.

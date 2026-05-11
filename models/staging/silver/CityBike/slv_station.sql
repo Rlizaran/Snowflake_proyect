@@ -1,3 +1,5 @@
+-- Silver dim de estaciones: nombre/lat/lng canonicos por station_id (el mas frecuente y reciente).
+-- Materializado como VIEW: pocas filas, recompute barato; refleja altas/cambios del set de viajes.
 {{ config(
     materialized='view'
 ) }}

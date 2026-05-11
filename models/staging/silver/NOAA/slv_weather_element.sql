@@ -10,7 +10,6 @@ from (
     values
         ('TMAX', 'Temperatura maxima del dia', 'celsius'),
         ('TMIN', 'Temperatura minima del dia', 'celsius'),
-        ('TAVG', 'Temperatura promedio del dia', 'celsius'),
         ('PRCP', 'Precipitacion total (lluvia)', 'mm'),
         ('SNOW', 'Caida de nieve', 'mm'),
         ('SNWD', 'Profundidad de nieve acumulada', 'mm'),
