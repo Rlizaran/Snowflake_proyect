@@ -9,24 +9,53 @@
 version: 2
 
 snapshots:
-
   - name: snp_NOAA__noaa_raw_year
     description: >
-      Snapshot de los valores de las temperaturas. Captura cambios en
-      las columnas 'data_value', 'q_flag', 'm_flag', 's_flag' usando load_ts como timestamp de modificación.
+      Snapshot SCD2 sobre noaa_raw_year (Bronze).
+      Strategy 'check' sobre check_cols=['data_value', 'q_flag_category']: solo cambios reales
+      del valor o de la categoria de calidad disparan version SCD2 (no ruido de flags METADATA).
+      Cluster por year(observation_date) para pruning eficiente: anios cerrados no mutan.
     columns:
       - name: scd_key
-        description: PK compuesto del registro origen.
-      - name: station_id
-        description: FK de la estacion donde se tomo la muestra.
+        description: 'PK natural compuesta serializada: station_id || observation_date || element.'
         data_tests:
-          - unique
+          - not_null
+      - name: station_id
+        data_tests:
           - not_null
       - name: observation_date
-        description: Timestamp de la observacion.
         data_tests:
           - not_null
+      - name: element
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: { values: ['TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5'] }
+      - name: data_value
+        description: 'Valor en unidad real (Celsius / mm / m/s segun elemento). Escalado al snapshotear.'
+      - name: m_flag
+        description: 'Measurement flag NOAA (M=Missing, R=Replaced, T=Trace, etc.).'
+      - name: q_flag
+        description: 'Quality flag NOAA literal (Z, G, S, I, X, ...).'
+      - name: q_flag_category
+        description: 'Categoria del q_flag derivada del codebook NOAA (usada como check_col).'
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
+      - name: s_flag
+      - name: obs_time
+        description: 'HHMM (4 digitos). NULL bronze -> default 2400.'
+      - name: source_file
       - name: load_ts
-        description: Timestamp desde el que esta versión es válida.
+      - name: dbt_scd_id
+        description: 'Hash unico por version (interno dbt).'
         data_tests:
+          - unique:  { config: { severity: error } }
           - not_null
+      - name: dbt_updated_at
+      - name: dbt_valid_from
+        data_tests: 
+          - not_null
+      - name: dbt_valid_to
+        description: 'NULL = version vigente. NOT NULL = reemplazada.'
