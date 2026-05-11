@@ -1,8 +1,6 @@
 # ============================================================================
 # dbt_project.yml - Pipeline medallion CityBike + NOAA en Snowflake
-# FIX (ronda 6): removidos todos los +snowflake_warehouse: WH_ANALISIS overrides.
 # Tras el primer dbt run completo, el resto son updates incrementales pequenios
-# y el WH default (WH_NYCBIKE_DEV / WH_NYCBIKE_PRO) basta sin tardar mucho.
 # ============================================================================
 name: 'snowflake_proyect'
 version: '1.0.0'
@@ -30,12 +28,6 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# ----------------------------------------------------------------------------
-# Hooks a nivel de proyecto
-# ----------------------------------------------------------------------------
-#on-run-start:
-#  - "ALTER WAREHOUSE WH_NYCBIKE_DEV RESUME IF SUSPENDED;"
-
 # ============================================================================
 # CONFIGURACION DE MODELOS
 # ============================================================================
@@ -58,7 +50,6 @@ models:
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       intermediate:
         +schema: intermediate
-        # FIX: removidos +snowflake_warehouse overrides para NY y JC. Usar WH default.
 
       # ----------------------------------------------------------------------
       # SILVER normalizado - slv_* con PKs/FKs explicitas
@@ -85,6 +76,8 @@ snapshots:
   +transient: false
   +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
   +target_schema: snapshots
+  +snowflake_warehouse: 'WH_ANALISIS'
+  
 
 # ============================================================================
 # CONFIGURACION DE TESTS

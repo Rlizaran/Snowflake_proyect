@@ -1,51 +1,51 @@
 version: 2
 
 models:
-  - name: stg_CityBike_citybike_trips
+  - name: stg_CityBike__citybike_trips
     description: >
-      Modelo incremental que unifica los viajes de New York (NY) y Jersey City (JC). 
+      Modelo incremental que unifica los viajes de New York (NY) y Jersey City (JC).
     columns:
       - name: ride_id
         description: "Identificador único de cada viaje (Clave Primaria)."
-        tests:
+        data_tests:
           - unique
           - not_null
       - name: city
         description: "Ciudad de origen: 'Manhattan' o 'Jersey City'."
-        tests:
+        data_tests:
           - accepted_values:
-              values: ['Manhattan', 'Jersey City']
+              arguments: { values: ['Manhattan', 'Jersey City'] }
       - name: started_at
         description: "Timestamp de inicio del viaje. Filtrado para ser >= 2024-01-01."
-        tests:
+        data_tests:
           - not_null
       - name: ended_at
         description: "Timestamp de fin del viaje. Validado para ser posterior a started_at."
-        tests:
+        data_tests:
           - not_null
       - name: trip_duration_min
         description: "Duración calculada del viaje en minutos."
       - name: rideable_type
         description: "Tipo de bicicleta utilizada."
-        tests:
+        data_tests:
           - accepted_values:
-              values: ['classic_bike', 'electric_bike']
+              arguments: { values: ['classic_bike', 'electric_bike'] }
       - name: start_station_id
         description: "ID de la estación de inicio. Validado contra nulos en la capa de limpieza."
-        tests:
+        data_tests:
           - not_null
       - name: end_station_id
         description: "ID de la estación de destino. Validado contra nulos en la capa de limpieza."
-        tests:
+        data_tests:
           - not_null
       - name: member_casual
         description: "Tipo de usuario (Suscrito o Casual)."
-        tests:
+        data_tests:
           - accepted_values:
-              values: ['member', 'casual']
+              arguments: { values: ['member', 'casual'] }
       - name: load_ts
         description: "Timestamp de carga desde el sistema origen. Se usa para la lógica incremental."
-        tests:
+        data_tests:
           - not_null
 
   - name: slv_trip
@@ -174,19 +174,19 @@ models:
       - name: season
 
   - name: slv_station
-    description: 'unique stations from NY and JC'
+    description: 'Estaciones unicas (NY + JC) deducidas desde stg_CityBike__citybike_trips'
     columns:
       - name: station_id
         description: 'PK de estaciones'
         data_tests:
           - unique
           - not_null
-      - name: station_name
-        description: 'nombre de estacion'
+      - name: canonical_name
+        description: 'Nombre canonico de la estacion (el mas frecuente por station_id)'
         data_type: varchar
-      - name: lat
-        description: 'latitud'
-        data_type: real
-      - name: lng
-        description: 'longitud'
-        data_type: real
+      - name: canonical_lat
+        description: 'Latitud canonica'
+        data_type: number
+      - name: canonical_lng
+        description: 'Longitud canonica'
+        data_type: number

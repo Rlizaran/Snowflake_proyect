@@ -1,6 +1,5 @@
-# FIX (ronda 6): bajado a severity:warn el test relationships de
 # slv_weather_observation.station_id -> slv_weather_station.
-# Razon: el snapshot ya NO filtra por las 2 estaciones del proyecto (mantenemos todas las US
+# el snapshot ya NO filtra por las 2 estaciones del proyecto (mantenemos todas las US
 # disponibles para el futuro fct_us_temperature en Gold). slv_weather_station tiene solo 2
 # estaciones hardcoded -> el test fallaria sistematicamente con error.
 # Cuando se cree una dim ampliada (slv_weather_station_us con todas las del proyecto US-wide)
@@ -22,8 +21,14 @@ models:
         data_tests:
           - not_null
       - name: data_value
+        description: 'Valor en unidad real (Celsius / mm / m/s). Escalado en snapshot.'
       - name: m_flag
       - name: q_flag
+      - name: q_flag_category
+        description: 'Categoria NOAA: OK / SUSPECT / INVALID / PROCESSING / METADATA / UNKNOWN. Derivada en snapshot.'
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
       - name: s_flag
       - name: obs_time
       - name: source_file
@@ -42,9 +47,8 @@ models:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_id
-        description: 'Unique station id per city. join with slv_weather_station (filtra a las 2 estaciones del proyecto)'
+        description: 'Station id GHCN-Daily. severity:warn porque slv_weather_station es subset (2 estaciones del proyecto) del universo de observation.'
         data_tests:
-          # FIX: severity:warn porque slv_weather_station es subset (2 estaciones) del universo de observation
           - relationships:
               config:
                 severity: warn
@@ -67,72 +71,13 @@ models:
                 to: ref('slv_weather_element')
                 field: element_code
       - name: data_value
+        description: 'Valor en unidad real (Celsius / mm / m/s segun elemento). Escalado en el snapshot.'
       - name: q_flag
-
-  - name: slv_weather_observation_history
-    description: 'TODAS las versiones del snapshot NOAA (vigentes + reemplazadas). Para BI: cuantas correcciones hizo NOAA por anio/estacion/elemento.'
-    columns:
-      - name: observation_version_id
-        description: 'PK del row historico (scd_key + dbt_valid_from)'
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
-      - name: scd_key
-        description: 'Clave SCD2 (station_id|observation_date|element)'
-        data_tests:
-          - not_null
-      - name: station_id
-      - name: observation_date
-      - name: observation_year
-      - name: observation_quarter
-      - name: observation_month
-      - name: element_code
-      - name: data_value
-      - name: m_flag
-      - name: q_flag
-      - name: s_flag
-      - name: obs_time
-      - name: dbt_valid_from
-      - name: dbt_valid_to
-        description: 'NULL = version vigente. NOT NULL = reemplazada por una correccion.'
-      - name: dbt_updated_at
-      - name: is_current
-      - name: is_superseded
-        description: 'TRUE = esta version fue corregida por NOAA mas tarde (= "error" detectado)'
-      - name: has_q_flag
-
-  - name: slv_weather_daily
-    description: 'Wide pivot pre-agregado: un row por (station_id, date) con TMAX/TMIN/PRCP/SNOW. Surrogate key.'
-    columns:
-      - name: daily_id
-        description: 'Surrogate PK (hash MD5 de station_id + observation_date)'
-        data_tests:
-          - unique:  { config: { severity: error } }
-          - not_null
-      - name: station_id
-        data_tests:
-          - relationships:
-              arguments:
-                to: ref('slv_weather_station')
-                field: station_id
-      - name: observation_date
-        data_tests:
-          - not_null
-          - relationships:
-              arguments:
-                to: ref('slv_date')
-                field: date_id
-      - name: city
-      - name: temp_max_c
-      - name: temp_min_c
-      - name: temp_avg_c
-      - name: precipitation_mm
-      - name: snowfall_mm
-      - name: snow_depth_mm
-      - name: weather_category
+      - name: q_flag_category
+        description: 'Categoria NOAA derivada en snapshot.'
         data_tests:
           - accepted_values:
-              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+              arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
 
   - name: slv_weather_station
     description: 'Dimension de estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC). Subset del universo en slv_weather_observation.'
