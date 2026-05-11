@@ -8,11 +8,10 @@
 {{
     config(
         target_database=env_var('DBT_ENVIRONMENTS', 'FAIL') ~ '_CITYBIKE_SILVER',
-        snowflake_warehouse='WH_ANALISIS',
         target_schema='snapshots',
         unique_key='scd_key',
         strategy='check',
-        check_cols=['data_value', 'q_flag', 'm_flag', 's_flag'],
+        check_cols=['data_value', 'q_flag_category'],
         invalidate_hard_deletes=False,
         cluster_by=['year(observation_date)'],
         transient=False
@@ -30,9 +29,19 @@ with src as (
                 then round(try_to_decimal(data_value, 18, 2) / 10, 2)
             else try_to_decimal(data_value, 18, 2)
         end as data_value,
-        coalesce(nullif(trim(m_flag), ''), ' ') as m_flag,
-        coalesce(nullif(trim(q_flag), ''), ' ') as q_flag,
-        coalesce(nullif(trim(s_flag), ''), ' ') as s_flag,
+        trim(m_flag) as m_flag,
+        trim(q_flag) as q_flag,
+        trim(s_flag) as s_flag,
+        -- Categoria del q_flag segun codebook NOAA GHCN-Daily.
+        -- solo cambios de categoria disparan version SCD2.
+        case
+            when trim(q_flag) in ('Z','G')             then 'OK'
+            when trim(q_flag) = 'S'                    then 'SUSPECT'
+            when trim(q_flag) in ('I','X')             then 'INVALID'
+            when trim(q_flag) in ('M','R','D','T','N') then 'PROCESSING'
+            when trim(q_flag) in ('L','O','K','W')     then 'METADATA'
+            else 'UNKNOWN'
+        end as q_flag_category,
         coalesce(try_cast(obs_time as int), 2400) as obs_time,
         source_file,
         load_ts
@@ -42,7 +51,7 @@ with src as (
       and trim(element) in ('TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5')
 )
 
--- Defensa contra duplicados de bronze (DEV doblado): conserva la fila mas reciente por scd_key
+-- conserva la fila mas reciente por scd_key
 select *
 from src
 qualify row_number() over (partition by scd_key order by load_ts desc) = 1

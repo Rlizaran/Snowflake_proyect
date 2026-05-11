@@ -1,7 +1,5 @@
 -- Silver fact NOAA en long format normalizado: un row por (station_id, observation_date, element_code)
 -- Surrogate key (observation_id) generado con dbt_utils para simplificar joins downstream
--- FIX: data_value ahora viene escalado desde stg (Celsius / mm / m/s). Se expone tambien
--- data_value_raw por si alguna metrica BI necesita el valor NOAA original.
 -- Materializado como VIEW (default del proyecto): solo agrega un MD5 sobre stg.
 
 with obs as (
@@ -12,15 +10,15 @@ select
     -- Surrogate PK (hash MD5 sobre las 3 columnas que forman la PK natural compuesta)
     {{ dbt_utils.generate_surrogate_key(['station_id', 'observation_date', 'element']) }} as observation_id,
 
-    -- FKs (ahora si reales: snapshot filtra a las 2 estaciones del proyecto)
-    station_id,                  -- -> slv_weather_station
-    observation_date,            -- -> slv_date
-    element as element_code,     -- -> slv_weather_element
+    -- FKs
+    station_id,
+    observation_date,
+    element as element_code,
 
     -- Atributos
-    data_value,                  -- en unidad real (Celsius / mm / m/s)
-    data_value_raw,              -- valor NOAA original (decimas o mm segun elemento)
+    data_value,
     q_flag,
+    q_flag_category,
 
     -- Linaje
     source_file,
