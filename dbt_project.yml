@@ -49,8 +49,8 @@ models:
       +on_schema_change: append_new_columns
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       intermediate:
-        +schema: intermediate\
-        
+        +schema: intermediate
+
       # ----------------------------------------------------------------------
       # SILVER normalizado - slv_* con PKs/FKs explicitas
       # ----------------------------------------------------------------------
