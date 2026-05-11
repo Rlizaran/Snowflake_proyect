@@ -76,6 +76,8 @@ snapshots:
   +transient: false
   +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
   +target_schema: snapshots
+  +snowflake_warehouse: 'WH_ANALISIS'
+  
 
 # ============================================================================
 # CONFIGURACION DE TESTS
