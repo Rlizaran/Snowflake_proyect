@@ -36,11 +36,11 @@ select
     city_id || '|' || rideable_type_code || '|' || user_type_code as series_key,
 
     -- metricas
-    count(*)                                  as n_trips,
-    avg(trip_duration_min)::decimal(10,2)     as avg_duration_min,
-    sum(trip_duration_min)                    as total_duration_min,
-    min(trip_duration_min)                    as min_duration_min,
-    max(trip_duration_min)                    as max_duration_min,
+    count(*) as n_trips,
+    avg(trip_duration_min)::decimal(10,2) as avg_duration_min,
+    sum(trip_duration_min) as total_duration_min,
+    min(trip_duration_min) as min_duration_min,
+    max(trip_duration_min) as max_duration_min,
     median(trip_duration_min)::decimal(10,2)  as median_duration_min
 from trips
 group by trip_date, city_id, rideable_type_code, user_type_code

@@ -33,28 +33,28 @@ select
     date_day as fecha_id,
 
     -- atributos calendario
-    year(date_day)                                            as anio,
-    quarter(date_day)                                         as trimestre,
-    month(date_day)                                           as mes,
+    year(date_day) as anio,
+    quarter(date_day) as trimestre,
+    month(date_day) as mes,
     decode(month(date_day),
         1,'Enero', 2,'Febrero', 3,'Marzo', 4,'Abril',
         5,'Mayo', 6,'Junio', 7,'Julio', 8,'Agosto',
         9,'Septiembre',10,'Octubre',11,'Noviembre',12,'Diciembre'
-    )                                                         as nombre_mes,
-    to_char(date_day, 'YYYY-MM')                              as anio_mes,
-    day(date_day)                                             as dia_mes,
-    dayofweekiso(date_day)                                    as dia_semana,
+    ) as nombre_mes,
+    to_char(date_day, 'YYYY-MM') as anio_mes,
+    day(date_day) as dia_mes,
+    dayofweekiso(date_day) as dia_semana,
     decode(dayofweekiso(date_day),
         1,'Lunes', 2,'Martes', 3,'Miercoles', 4,'Jueves',
         5,'Viernes', 6,'Sabado', 7,'Domingo'
-    )                                                         as nombre_dia,
+    ) as nombre_dia,
     case when dayofweekiso(date_day) in (6,7) then true else false end as es_fin_semana,
-    weekofyear(date_day)                                      as semana_anio,
-    dayofyear(date_day)                                       as dia_anio,
+    weekofyear(date_day) as semana_anio,
+    dayofyear(date_day) as dia_anio,
     case
         when month(date_day) in (12,1,2) then 'Invierno'
         when month(date_day) in (3,4,5)  then 'Primavera'
         when month(date_day) in (6,7,8)  then 'Verano'
         else 'Otono'
-    end                                                       as estacion
+    end as estacion
 from date_spine
