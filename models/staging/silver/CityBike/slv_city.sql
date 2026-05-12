@@ -1,6 +1,4 @@
--- Silver lookup: ciudades CityBike (NY, JC) con surrogate key
--- FIX: anadido comentario de cabecera (regla del proyecto). Sin cambios funcionales.
--- Materializado como VIEW (default del proyecto): dominio cerrado de 2 valores.
+-- slv_city: lookup de ciudades CityBike (Manhattan, Jersey City).
 
 with city_table as (
     select distinct city
@@ -8,6 +6,9 @@ with city_table as (
 )
 
 select
+    -- PK
     {{ dbt_utils.generate_surrogate_key(['city']) }} as city_id,
+
+    -- atributo
     city
 from city_table

@@ -1,13 +1,12 @@
-# FIX: descripcion de obs_time corregida de 'HHMMSS' a 'HHMM' (NOAA GHCN-Daily lo publica
-# como 4 digitos; el snapshot castea con coalesce(..., 2400)).
+# Sources: tabla Bronze del schema NOAA en {DEV_,PRO_}CITYBIKE_BRONZE.
+
 version: 2
 
-# Sources: tablas Bronze del schema NOAA en {DEV_,PRO_}CITYBIKE_BRONZE
 sources:
   - name: NOAA
     database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
     schema: NOAA
-    description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC)'
+    description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC).'
 
     config:
       freshness:
@@ -17,47 +16,41 @@ sources:
 
     tables:
       - name: noaa_raw_year
-        description: 'Observaciones meteorologicas raw en formato long: una fila por (station, fecha, elemento)'
+        description: 'Observaciones meteorologicas raw en formato long: una fila por (station, fecha, elemento).'
         columns:
           - name: station_id
-            description: 'ID de la estacion meteorologica (USW00094728=Manhattan, USW00014734=Newark/JC)'
+            description: 'ID estacion meteorologica (USW00094728=Manhattan, USW00014734=Newark/JC).'
             data_type: varchar
             data_tests:
-              - not_null:
-                  config:
-                    severity: warn
+              - not_null:    { config: { severity: warn } }
           - name: observation_date
-            description: 'Fecha de la observacion en formato YYYYMMDD (varchar bronze)'
+            description: 'Fecha en formato YYYYMMDD (varchar bronze).'
             data_type: varchar
             data_tests:
-              - not_null:
-                  config:
-                    severity: warn
+              - not_null:    { config: { severity: warn } }
           - name: element
-            description: 'Codigo del elemento medido (TMAX, TMIN, PRCP, SNOW, etc.)'
+            description: 'Codigo del elemento NOAA (TMAX, TMIN, PRCP, SNOW, etc.).'
             data_type: varchar
             data_tests:
-              - not_null:
-                  config:
-                    severity: warn
+              - not_null:    { config: { severity: warn } }
           - name: data_value
-            description: 'Valor de la observacion en decimas de unidad (TMAX/TMIN/TAVG en decimas de C, PRCP en mm)'
+            description: 'Valor de la observacion en decimas de unidad (segun NOAA codebook).'
             data_type: varchar
+            data_tests:
+              - not_null:    { config: { severity: warn } }
           - name: m_flag
-            description: 'Measurement flag'
             data_type: varchar
           - name: q_flag
-            description: 'Quality flag (no nulo = observacion sospechosa)'
+            description: 'Quality flag (no nulo = observacion sospechosa).'
             data_type: varchar
           - name: s_flag
-            description: 'Source flag'
             data_type: varchar
           - name: obs_time
-            description: 'Hora de la observacion (HHMM, 4 digitos; default 2400 si NULL)'
+            description: 'Hora de la observacion (HHMM, 4 digitos; default 2400 si NULL).'
             data_type: varchar
           - name: source_file
-            description: 'Nombre del archivo NOAA por anio'
             data_type: varchar
           - name: load_ts
-            description: 'Timestamp de carga a Snowflake'
             data_type: timestamp_ntz
+            data_tests:
+              - not_null

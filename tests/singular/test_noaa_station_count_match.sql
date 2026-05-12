@@ -1,8 +1,4 @@
--- Test: cuenta de OBSERVACIONES UNICAS por estacion en bronze debe coincidir con silver.
--- Detecta drops silenciosos de estaciones (snapshot ahora deja entrar todas las GHCN-Daily;
--- silver debe reflejarlas todas).
--- FIX (ronda 6): removido el filtro de 2 estaciones del bronze_filter para alinear con el
--- snapshot que ya no filtra (mantenemos todas las US para futuro fct_us_temperature).
+-- Test: conteo de observaciones unicas por estacion debe coincidir entre bronze y silver.
 
 {{ bronze_silver_count_diff(
     bronze_relation=ref('stg_NOAA__noaa_raw_year'),

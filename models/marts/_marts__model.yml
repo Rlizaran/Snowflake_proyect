@@ -1,15 +1,156 @@
-# Capa Gold: facts pre-calculados para consumo Power BI.
-# fct_weather_daily: pivot wide + categorizacion (de slv_weather_daily).
-# fct_noaa_corrections: SCD2 historico + flags BI + categorizacion q_flag (de slv_weather_observation_history).
+# Capa Gold marts: facts pre-calculados para consumo Power BI + ML.
 
 version: 2
 
 models:
+  - name: fct_trips
+    description: 'Fact fino: 1 row por viaje, con FKs a dimensiones gold y bucket de duracion.'
+    columns:
+      - name: ride_id
+        description: 'PK natural del viaje.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: trip_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_fecha')
+                field: fecha_id
+      - name: city_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_id
+      - name: rideable_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_rideable_bike')
+                field: rideable_type_code
+      - name: user_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_user_type')
+                field: user_type_code
+      - name: start_station_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_id
+      - name: end_station_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_id
+      - name: started_at
+      - name: ended_at
+      - name: trip_duration_min
+      - name: duration_bucket
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['short','medium','long','extra_long'] }
+
+  - name: fct_trips_daily
+    description: 'Fact agregado de viajes por dia, ciudad, tipo de bici y tipo de usuario. Input para PBI y ML.FORECAST.'
+    columns:
+      - name: daily_trip_id
+        description: 'PK MD5(trip_date, city_id, rideable_type_code, user_type_code).'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: trip_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_fecha')
+                field: fecha_id
+      - name: city_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_id
+      - name: rideable_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_rideable_bike')
+                field: rideable_type_code
+      - name: user_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_user_type')
+                field: user_type_code
+      - name: series_key
+        description: 'Concat city_id|rideable_type_code|user_type_code. Usar como SERIES_COLNAME en ML.FORECAST.'
+        data_tests: [not_null]
+      - name: n_trips
+        data_tests: [not_null]
+      - name: avg_duration_min
+      - name: total_duration_min
+      - name: min_duration_min
+      - name: max_duration_min
+      - name: median_duration_min
+
+  - name: fct_trips_weather
+    description: 'Cruce diario de rides + clima por ciudad. Grano = (trip_date x city).'
+    columns:
+      - name: trip_weather_id
+        description: 'PK MD5(trip_date, city_name).'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: trip_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_fecha')
+                field: fecha_id
+      - name: city_name
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: { values: ['Manhattan','Jersey City'] }
+      - name: station_id
+        description: 'FK a la estacion NOAA mapeada a la ciudad (Manhattan->USW00094728, JC->USW00014734).'
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_station_weather')
+                field: station_id
+      - name: n_trips
+        data_tests: [not_null]
+      - name: n_trips_member
+      - name: n_trips_casual
+      - name: n_trips_classic
+      - name: n_trips_electric
+      - name: avg_duration_min
+      - name: temp_max_c
+      - name: temp_min_c
+      - name: temp_avg_c
+      - name: precipitation_mm
+      - name: snowfall_mm
+      - name: snow_depth_mm
+      - name: weather_category
+        data_tests:
+          - accepted_values:
+              config: { severity: warn }
+              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+
   - name: fct_weather_daily
     description: 'Fact diario de clima por estacion (wide). 1 row por (station_id, observation_date).'
     columns:
       - name: daily_id
-        description: 'Surrogate PK MD5(station_id, observation_date).'
+        description: 'PK surrogate MD5(station_id, observation_date).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
@@ -17,15 +158,15 @@ models:
         data_tests:
           - relationships:
               arguments:
-                to: ref('slv_weather_station')
+                to: ref('dim_station_weather')
                 field: station_id
       - name: observation_date
         data_tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('slv_date')
-                field: date_id
+                to: ref('dim_fecha')
+                field: fecha_id
       - name: city
         data_tests:
           - accepted_values: { arguments: { values: ['NY','JC'] } }
@@ -41,10 +182,7 @@ models:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: fct_noaa_corrections
-    description: >
-      SCD2 historico de observaciones NOAA: TODAS las versiones (vigentes + reemplazadas).
-      Para PBI: medir cuantas correcciones NOAA por anio/estacion/elemento, y la categoria
-      de calidad (q_flag) interpretada segun el codebook GHCN-Daily.
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas) para BI.'
     columns:
       - name: observation_version_id
         description: 'PK MD5(scd_key + dbt_valid_from).'
@@ -60,30 +198,17 @@ models:
       - name: observation_month
       - name: element_code
       - name: data_value
-        description: 'Valor en unidad real (Celsius / mm / m/s).'
       - name: m_flag
-        description: 'Measurement flag (incluye R=Replaced, T=Trace, etc.).'
       - name: q_flag
-        description: 'Quality flag NOAA GHCN-Daily. Ver q_flag_category para interpretacion BI-friendly.'
       - name: s_flag
       - name: obs_time
       - name: dbt_valid_from
       - name: dbt_valid_to
-        description: 'NULL = version vigente. NOT NULL = reemplazada.'
       - name: dbt_updated_at
       - name: is_current
       - name: is_superseded
       - name: q_flag_category
-        description: >
-          Categoria del q_flag segun codebook NOAA:
-          OK (Z=zero/normal, G=good),
-          SUSPECT (S=suspect),
-          INVALID (I=inconsistent, X=erroneous),
-          PROCESSING (M=missing, R=replaced, D=derived, T=trace, N=null),
-          METADATA (L=local, O=original, K=kernel-checked, W=warning),
-          UNKNOWN (otros / NULL).
         data_tests:
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
       - name: is_problematic
-        description: 'TRUE si q_flag indica problema real (SUSPECT o INVALID). Reemplaza al has_q_flag anterior que era binario y no distinguia metadata.'
