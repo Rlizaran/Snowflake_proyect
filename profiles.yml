@@ -1,4 +1,4 @@
-# Profile dbt para Snowflake. Database segun DBT_ENVIRONMENTS (DEV / PRO).
+# Profile dbt para Snowflake. Database por DBT_ENVIRONMENTS (DEV/PRO). Schema sandbox por SF_SCHEMA.
 
 snowflake_proyect:
   target: default
@@ -11,6 +11,6 @@ snowflake_proyect:
       role: "{{ env_var('SF_ROLE', 'ROLE_NYCBIKE') }}"
       warehouse: "{{ env_var('SF_WAREHOUSE', 'WH_NYCBIKE_DEV') }}"
       database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
-      schema: "{{ env_var('SF_SCHEMA', 'CITYBIKE') }}"
+      schema: "{{ env_var('SF_SCHEMA', 'dbt_rlizaran') }}"
       threads: 4
       client_session_keep_alive: false

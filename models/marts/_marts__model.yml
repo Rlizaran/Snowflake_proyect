@@ -1,8 +1,151 @@
-# Capa Gold marts: facts pre-calculados para consumo Power BI.
+# Capa Gold marts: facts pre-calculados para consumo Power BI + ML.
 
 version: 2
 
 models:
+  - name: fct_trips
+    description: 'Fact fino: 1 row por viaje, con FKs a dimensiones gold y bucket de duracion.'
+    columns:
+      - name: ride_id
+        description: 'PK natural del viaje.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: trip_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_fecha')
+                field: fecha_id
+      - name: city_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_id
+      - name: rideable_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_rideable_bike')
+                field: rideable_type_code
+      - name: user_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_user_type')
+                field: user_type_code
+      - name: start_station_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_id
+      - name: end_station_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_station')
+                field: station_id
+      - name: started_at
+      - name: ended_at
+      - name: trip_duration_min
+      - name: duration_bucket
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['short','medium','long','extra_long'] }
+
+  - name: fct_trips_daily
+    description: 'Fact agregado de viajes por dia, ciudad, tipo de bici y tipo de usuario. Input para PBI y ML.FORECAST.'
+    columns:
+      - name: daily_trip_id
+        description: 'PK MD5(trip_date, city_id, rideable_type_code, user_type_code).'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: trip_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_fecha')
+                field: fecha_id
+      - name: city_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_city')
+                field: city_id
+      - name: rideable_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_rideable_bike')
+                field: rideable_type_code
+      - name: user_type_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_user_type')
+                field: user_type_code
+      - name: series_key
+        description: 'Concat city_id|rideable_type_code|user_type_code. Usar como SERIES_COLNAME en ML.FORECAST.'
+        data_tests: [not_null]
+      - name: n_trips
+        data_tests: [not_null]
+      - name: avg_duration_min
+      - name: total_duration_min
+      - name: min_duration_min
+      - name: max_duration_min
+      - name: median_duration_min
+
+  - name: fct_trips_weather
+    description: 'Cruce diario de rides + clima por ciudad. Grano = (trip_date x city).'
+    columns:
+      - name: trip_weather_id
+        description: 'PK MD5(trip_date, city_name).'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: trip_date
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_fecha')
+                field: fecha_id
+      - name: city_name
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments: { values: ['Manhattan','Jersey City'] }
+      - name: station_id
+        description: 'FK a la estacion NOAA mapeada a la ciudad (Manhattan->USW00094728, JC->USW00014734).'
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_station_weather')
+                field: station_id
+      - name: n_trips
+        data_tests: [not_null]
+      - name: n_trips_member
+      - name: n_trips_casual
+      - name: n_trips_classic
+      - name: n_trips_electric
+      - name: avg_duration_min
+      - name: temp_max_c
+      - name: temp_min_c
+      - name: temp_avg_c
+      - name: precipitation_mm
+      - name: snowfall_mm
+      - name: snow_depth_mm
+      - name: weather_category
+        data_tests:
+          - accepted_values:
+              config: { severity: warn }
+              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+
   - name: fct_weather_daily
     description: 'Fact diario de clima por estacion (wide). 1 row por (station_id, observation_date).'
     columns:

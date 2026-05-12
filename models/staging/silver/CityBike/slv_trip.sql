@@ -1,9 +1,17 @@
--- slv_trip: fact normalizado, un row por viaje (NY+JC unidos) con FKs a dims.
+-- slv_trip: fact normalizado, un row por viaje (NY+JC unidos) con FKs a dims. Incremental MERGE por ride_id.
 
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    unique_key='ride_id',
+    incremental_strategy='merge',
+    on_schema_change='append_new_columns'
+) }}
 
 with trips as (
     select * from {{ ref('stg_CityBike__citybike_trips') }}
+    {% if is_incremental() %}
+        where load_ts > (select coalesce(max(load_ts), '1900-01-01'::timestamp_ntz) from {{ this }})
+    {% endif %}
 ),
 
 deduplicated as (
