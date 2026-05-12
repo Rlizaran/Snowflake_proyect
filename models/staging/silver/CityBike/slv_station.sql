@@ -1,27 +1,21 @@
--- Silver dim de estaciones: nombre/lat/lng canonicos por station_id (el mas frecuente y reciente).
--- Materializado como VIEW: pocas filas, recompute barato; refleja altas/cambios del set de viajes.
-{{ config(
-    materialized='view'
-) }}
+-- slv_station: estaciones unicas (NY + JC) con nombre y coords canonicos derivados de stg.
+
+{{ config(materialized='view') }}
 
 with trips as (
-    select 
-        *
-    from {{ ref('stg_CityBike__citybike_trips') }}
+    select * from {{ ref('stg_CityBike__citybike_trips') }}
 ),
 
 all_stations_raw as (
-    select 
-        start_station_id as station_id,
+    select
+        start_station_id   as station_id,
         start_station_name as station_name,
         round(start_lat, 4) as lat,
         round(start_lng, 4) as lng,
-        started_at as activity_at
+        started_at         as activity_at
     from trips
-    
     union all
-    
-    select 
+    select
         end_station_id,
         end_station_name,
         round(end_lat, 4),
@@ -31,31 +25,34 @@ all_stations_raw as (
 ),
 
 station_counts as (
-    select 
+    select
         station_id,
         station_name,
         lat,
         lng,
-        count(*) as frequency,
+        count(*)         as frequency,
         max(activity_at) as last_seen
     from all_stations_raw
     group by 1, 2, 3, 4
 ),
 
 ranked_stations as (
-    select 
+    select
         *,
         row_number() over (
-            partition by station_id 
+            partition by station_id
             order by frequency desc, last_seen desc
         ) as rn
     from station_counts
 )
 
-select 
+select
+    -- PK
     station_id,
+
+    -- atributos canonicos
     station_name as canonical_name,
-    lat as canonical_lat,
-    lng as canonical_lng
+    lat          as canonical_lat,
+    lng          as canonical_lng
 from ranked_stations
 where rn = 1

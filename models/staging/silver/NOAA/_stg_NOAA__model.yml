@@ -1,9 +1,4 @@
-# slv_weather_observation.station_id -> slv_weather_station.
-# el snapshot ya NO filtra por las 2 estaciones del proyecto (mantenemos todas las US
-# disponibles para el futuro fct_us_temperature en Gold). slv_weather_station tiene solo 2
-# estaciones hardcoded -> el test fallaria sistematicamente con error.
-# Cuando se cree una dim ampliada (slv_weather_station_us con todas las del proyecto US-wide)
-# se puede subir de nuevo a 'error'. O mantener como warn si la asimetria es intencional.
+# Silver NOAA: stg vigente del snapshot SCD2 + dim estaciones/elementos + fact observaciones.
 
 version: 2
 
@@ -25,7 +20,6 @@ models:
       - name: m_flag
       - name: q_flag
       - name: q_flag_category
-        description: 'Categoria NOAA: OK / SUSPECT / INVALID / PROCESSING / METADATA / UNKNOWN. Derivada en snapshot.'
         data_tests:
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
@@ -34,20 +28,18 @@ models:
       - name: source_file
       - name: load_ts
       - name: dbt_valid_from
-        description: 'Inicio de vigencia de esta version (SCD2)'
       - name: dbt_updated_at
-        description: 'Ultimo refresh del snapshot que toco esta fila'
 
   - name: slv_weather_observation
-    description: 'Fact NOAA en long format: una observacion por (station, date, element). Surrogate key MD5 sobre las 3 cols.'
+    description: 'Fact NOAA long format: una observacion por (station, date, element). Surrogate MD5.'
     columns:
       - name: observation_id
-        description: 'Surrogate PK (hash MD5 de station_id + observation_date + element_code)'
+        description: 'PK surrogate (MD5 de station_id + observation_date + element_code).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_id
-        description: 'Station id GHCN-Daily. severity:warn porque slv_weather_station es subset (2 estaciones del proyecto) del universo de observation.'
+        description: 'FK a slv_weather_station. severity:warn (slv_weather_station es subset).'
         data_tests:
           - relationships:
               config:
@@ -56,31 +48,29 @@ models:
                 to: ref('slv_weather_station')
                 field: station_id
       - name: observation_date
-        description: 'FK a slv_date'
+        description: 'FK a dim_fecha.'
         data_tests:
           - not_null
           - relationships:
               arguments:
-                to:    ref('slv_date')
-                field: date_id
+                to:    ref('dim_fecha')
+                field: fecha_id
       - name: element_code
-        description: 'FK a slv_weather_element'
+        description: 'FK a slv_weather_element.'
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_weather_element')
                 field: element_code
       - name: data_value
-        description: 'Valor en unidad real (Celsius / mm / m/s segun elemento). Escalado en el snapshot.'
       - name: q_flag
       - name: q_flag_category
-        description: 'Categoria NOAA derivada en snapshot.'
         data_tests:
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
 
   - name: slv_weather_station
-    description: 'Dimension de estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC). Subset del universo en slv_weather_observation.'
+    description: 'Dimension de estaciones NOAA del proyecto (Manhattan + Newark/JC).'
     columns:
       - name: station_id
         data_tests:
@@ -96,7 +86,7 @@ models:
       - name: elevation_m
 
   - name: slv_weather_element
-    description: 'Lookup: elementos meteorologicos NOAA GHCN-Daily (TMAX, TMIN, PRCP, etc.)'
+    description: 'Lookup de elementos meteorologicos NOAA GHCN-Daily.'
     columns:
       - name: element_code
         data_tests:

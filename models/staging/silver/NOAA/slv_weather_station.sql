@@ -1,8 +1,10 @@
--- Silver dimension: estaciones meteorologicas NOAA con metadata fija (Manhattan + Newark/JC)
--- Materializado como VIEW (default del proyecto): 2 filas hardcoded, dominio cerrado.
+-- slv_weather_station: dim de estaciones NOAA del proyecto (Manhattan + Newark/JC).
 
 select
+    -- PK
     station_id,
+
+    -- atributos
     station_name,
     city,
     lat,

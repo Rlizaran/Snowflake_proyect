@@ -1,20 +1,10 @@
-# ============================================================================
-# _snapshots.yml — Documentación + tests sobre los snapshots
-# ============================================================================
-# los snapshots también se les pueden añadir tests. Especialmente útil
-# para validar la integridad del historial (que dbt_valid_from < dbt_valid_to,
-# que solo hay una versión "vigente" por unique_key, etc.).
-# ============================================================================
+# Documentacion + tests sobre los snapshots SCD2.
 
 version: 2
 
 snapshots:
   - name: snp_NOAA__noaa_raw_year
-    description: >
-      Snapshot SCD2 sobre noaa_raw_year (Bronze).
-      Strategy 'check' sobre check_cols=['data_value', 'q_flag_category']: solo cambios reales
-      del valor o de la categoria de calidad disparan version SCD2 (no ruido de flags METADATA).
-      Cluster por year(observation_date) para pruning eficiente: anios cerrados no mutan.
+    description: 'Snapshot SCD2 sobre noaa_raw_year. Strategy check sobre data_value y q_flag_category.'
     columns:
       - name: scd_key
         description: 'PK natural compuesta serializada: station_id || observation_date || element.'
@@ -32,30 +22,24 @@ snapshots:
           - accepted_values:
               arguments: { values: ['TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5'] }
       - name: data_value
-        description: 'Valor en unidad real (Celsius / mm / m/s segun elemento). Escalado al snapshotear.'
       - name: m_flag
-        description: 'Measurement flag NOAA (M=Missing, R=Replaced, T=Trace, etc.).'
       - name: q_flag
-        description: 'Quality flag NOAA literal (Z, G, S, I, X, ...).'
       - name: q_flag_category
-        description: 'Categoria del q_flag derivada del codebook NOAA (usada como check_col).'
         data_tests:
           - not_null
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
       - name: s_flag
       - name: obs_time
-        description: 'HHMM (4 digitos). NULL bronze -> default 2400.'
       - name: source_file
       - name: load_ts
       - name: dbt_scd_id
-        description: 'Hash unico por version (interno dbt).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: dbt_updated_at
       - name: dbt_valid_from
-        data_tests: 
+        data_tests:
           - not_null
       - name: dbt_valid_to
         description: 'NULL = version vigente. NOT NULL = reemplazada.'

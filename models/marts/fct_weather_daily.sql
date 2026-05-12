@@ -1,12 +1,6 @@
--- Gold mart: fact diario de clima por estacion (pivot wide + denormalizacion + categorizacion).
--- Movido desde silver/NOAA/slv_weather_daily.sql porque hace agregacion (pivot por element),
--- denormalizacion (join con slv_weather_station para meter city) y reglas de negocio
--- (weather_category con umbrales del proyecto) -> patron Gold, no Silver.
--- Materializado como TABLE (default de marts en dbt_project.yml). Se consume desde PBI
--- en cada visual; precalculado evita recomputar la cadena entera por query.
+-- Gold fact: clima diario por estacion (pivot wide de elementos + categorizacion).
 
 with
-
 obs as (
     select * from {{ ref('slv_weather_observation') }}
 ),
@@ -15,9 +9,6 @@ stations as (
     select * from {{ ref('slv_weather_station') }}
 ),
 
--- Pivot por (station, fecha) en su propio CTE para que los alias esten disponibles abajo.
--- INNER JOIN con stations filtra implicitamente a las 2 estaciones del proyecto (slv_weather_station
--- es subset). Si en el futuro se amplia la dim, este fact crece automaticamente.
 pivoted as (
     select
         o.station_id,
@@ -34,15 +25,15 @@ pivoted as (
 )
 
 select
-    -- Surrogate PK
+    -- PK surrogate
     {{ dbt_utils.generate_surrogate_key(['station_id', 'observation_date']) }} as daily_id,
 
     -- FKs
-    station_id,        -- -> slv_weather_station
-    observation_date,  -- -> slv_date / dim_date
+    station_id,
+    observation_date,
     city,
 
-    -- Metricas (todas en unidad real, ya escaladas en el snapshot)
+    -- metricas
     temp_max_c,
     temp_min_c,
     round((temp_max_c + temp_min_c) / 2, 2) as temp_avg_c,
@@ -50,12 +41,12 @@ select
     snowfall_mm,
     snow_depth_mm,
 
-    -- Categorizacion derivada (regla de negocio del proyecto)
+    -- categorizacion
     case
         when precipitation_mm > 5 then 'rainy'
-        when snowfall_mm > 0     then 'snowy'
-        when temp_max_c > 25     then 'hot'
-        when temp_max_c < 5      then 'cold'
+        when snowfall_mm > 0      then 'snowy'
+        when temp_max_c > 25      then 'hot'
+        when temp_max_c < 5       then 'cold'
         else 'mild'
     end as weather_category
 from pivoted

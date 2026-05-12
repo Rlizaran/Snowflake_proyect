@@ -1,6 +1,4 @@
-# Capa Gold: facts pre-calculados para consumo Power BI.
-# fct_weather_daily: pivot wide + categorizacion (de slv_weather_daily).
-# fct_noaa_corrections: SCD2 historico + flags BI + categorizacion q_flag (de slv_weather_observation_history).
+# Capa Gold marts: facts pre-calculados para consumo Power BI.
 
 version: 2
 
@@ -9,7 +7,7 @@ models:
     description: 'Fact diario de clima por estacion (wide). 1 row por (station_id, observation_date).'
     columns:
       - name: daily_id
-        description: 'Surrogate PK MD5(station_id, observation_date).'
+        description: 'PK surrogate MD5(station_id, observation_date).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
@@ -17,15 +15,15 @@ models:
         data_tests:
           - relationships:
               arguments:
-                to: ref('slv_weather_station')
+                to: ref('dim_station_weather')
                 field: station_id
       - name: observation_date
         data_tests:
           - not_null
           - relationships:
               arguments:
-                to: ref('slv_date')
-                field: date_id
+                to: ref('dim_fecha')
+                field: fecha_id
       - name: city
         data_tests:
           - accepted_values: { arguments: { values: ['NY','JC'] } }
@@ -41,10 +39,7 @@ models:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: fct_noaa_corrections
-    description: >
-      SCD2 historico de observaciones NOAA: TODAS las versiones (vigentes + reemplazadas).
-      Para PBI: medir cuantas correcciones NOAA por anio/estacion/elemento, y la categoria
-      de calidad (q_flag) interpretada segun el codebook GHCN-Daily.
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas) para BI.'
     columns:
       - name: observation_version_id
         description: 'PK MD5(scd_key + dbt_valid_from).'
@@ -60,30 +55,17 @@ models:
       - name: observation_month
       - name: element_code
       - name: data_value
-        description: 'Valor en unidad real (Celsius / mm / m/s).'
       - name: m_flag
-        description: 'Measurement flag (incluye R=Replaced, T=Trace, etc.).'
       - name: q_flag
-        description: 'Quality flag NOAA GHCN-Daily. Ver q_flag_category para interpretacion BI-friendly.'
       - name: s_flag
       - name: obs_time
       - name: dbt_valid_from
       - name: dbt_valid_to
-        description: 'NULL = version vigente. NOT NULL = reemplazada.'
       - name: dbt_updated_at
       - name: is_current
       - name: is_superseded
       - name: q_flag_category
-        description: >
-          Categoria del q_flag segun codebook NOAA:
-          OK (Z=zero/normal, G=good),
-          SUSPECT (S=suspect),
-          INVALID (I=inconsistent, X=erroneous),
-          PROCESSING (M=missing, R=replaced, D=derived, T=trace, N=null),
-          METADATA (L=local, O=original, K=kernel-checked, W=warning),
-          UNKNOWN (otros / NULL).
         data_tests:
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
       - name: is_problematic
-        description: 'TRUE si q_flag indica problema real (SUSPECT o INVALID). Reemplaza al has_q_flag anterior que era binario y no distinguia metadata.'

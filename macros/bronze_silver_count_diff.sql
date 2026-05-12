@@ -1,11 +1,4 @@
--- Macro: compara conteo de filas entre una relacion bronze y una silver agrupando por una
--- columna comun. Devuelve filas SOLO cuando hay diferencia (test FAIL en dbt).
--- FIX: anadido parametro opcional 'bronze_dedup_keys'. Cuando silver dedupea por una clave
--- natural (p.ej. snapshot SCD2 NOAA por scd_key, o stg merge por ride_id) y bronze tiene
--- duplicados (ej. DEV cargado dos veces), count(*) bronze != count(*) silver y el test falla
--- aunque no haya drop real. Pasando bronze_dedup_keys, la macro hace count(distinct ...) en
--- bronze sobre esa clave -> compara "observaciones unicas" vs silver y el test refleja
--- drops/silenciosos reales, no el ruido del bronze duplicado.
+-- Macro: compara conteos bronze vs silver agrupados por una columna. Devuelve filas solo si hay diff.
 
 {% macro bronze_silver_count_diff(
     bronze_relation,
@@ -17,7 +10,6 @@
 ) %}
 
 with bronze_count as (
-    -- Cuenta filas (o claves unicas si se pasa bronze_dedup_keys) en bronze, mismo filtro que stg
     select
         {{ bronze_group_expr }} as grp,
         {% if bronze_dedup_keys %}
@@ -31,7 +23,6 @@ with bronze_count as (
 ),
 
 silver_count as (
-    -- Cuenta filas en silver (ya filtrado/casteado/deduplicado en stg + slv)
     select {{ silver_group_expr }} as grp, count(*) as n
     from {{ silver_relation }}
     group by 1

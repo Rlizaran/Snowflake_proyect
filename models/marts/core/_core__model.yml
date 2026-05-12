@@ -1,0 +1,127 @@
+# Capa Gold - core: dimensiones centrales (passthrough de silver + dim_fecha calendario).
+
+version: 2
+
+models:
+  - name: dim_fecha
+    description: 'Spine diario de fechas. Rango derivado de min/max de stg_NOAA__noaa_raw_year.'
+    columns:
+      - name: fecha_id
+        description: 'PK: fecha del dia.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: anio
+      - name: trimestre
+      - name: mes
+        data_tests:
+          - accepted_values:
+              arguments: { values: [1,2,3,4,5,6,7,8,9,10,11,12] }
+      - name: nombre_mes
+      - name: anio_mes
+      - name: dia_mes
+      - name: dia_semana
+        data_tests:
+          - accepted_values:
+              arguments: { values: [1,2,3,4,5,6,7] }
+      - name: nombre_dia
+      - name: es_fin_semana
+      - name: semana_anio
+      - name: dia_anio
+      - name: estacion
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['Invierno','Primavera','Verano','Otono'] }
+
+  - name: dim_city
+    description: 'Ciudades CityBike (Manhattan, Jersey City).'
+    columns:
+      - name: city_id
+        description: 'PK surrogate.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: city
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+          - accepted_values:
+              arguments: { values: ['Manhattan','Jersey City'] }
+
+  - name: dim_user_type
+    description: 'Tipos de usuario CityBike (member, casual).'
+    columns:
+      - name: user_type_code
+        description: 'PK surrogate.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: member_casual
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+          - accepted_values:
+              arguments: { values: ['member','casual'] }
+      - name: description
+      - name: is_subscriber
+
+  - name: dim_rideable_bike
+    description: 'Tipos de bicicleta CityBike (classic, electric).'
+    columns:
+      - name: rideable_type_code
+        description: 'PK surrogate.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: rideable_type
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+          - accepted_values:
+              arguments: { values: ['classic_bike','electric_bike'] }
+      - name: description
+      - name: is_electric
+
+  - name: dim_station
+    description: 'Estaciones CityBike (NY + JC) con nombre y coordenadas canonicas.'
+    columns:
+      - name: station_id
+        description: 'PK de estacion.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: canonical_name
+      - name: canonical_lat
+      - name: canonical_lng
+
+  - name: dim_station_weather
+    description: 'Estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC).'
+    columns:
+      - name: station_id
+        description: 'PK de estacion meteo.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: station_name
+      - name: city
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['NY','JC'] }
+      - name: lat
+      - name: lng
+      - name: state
+      - name: elevation_m
+
+  - name: dim_weather_element
+    description: 'Elementos meteorologicos NOAA GHCN-Daily (TMAX, TMIN, PRCP, etc.).'
+    columns:
+      - name: element_code
+        description: 'PK del elemento.'
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+      - name: description
+      - name: unit
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['celsius','mm','m/s'] }

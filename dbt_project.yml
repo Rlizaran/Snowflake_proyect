@@ -1,7 +1,5 @@
-# ============================================================================
-# dbt_project.yml - Pipeline medallion CityBike + NOAA en Snowflake
-# Tras el primer dbt run completo, el resto son updates incrementales pequenios
-# ============================================================================
+# Pipeline medallion CityBike + NOAA en Snowflake con dbt.
+
 name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
@@ -13,9 +11,6 @@ quoting:
   schema: false
   identifier: false
 
-# ----------------------------------------------------------------------------
-# Rutas de archivos
-# ----------------------------------------------------------------------------
 model-paths:    ["models"]
 analysis-paths: ["analyses"]
 test-paths:     ["tests"]
@@ -28,9 +23,6 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# ============================================================================
-# CONFIGURACION DE MODELOS
-# ============================================================================
 models:
   +transient: false
   snowflake_proyect:
@@ -41,19 +33,12 @@ models:
         WH_NYCBIKE_DEV
       {%- endif -%}
 
-    # ------------------------------------------------------------------------
-    # STAGING - cast 1:1 desde Bronze (Capa Silver, schema intermediate)
-    # ------------------------------------------------------------------------
     staging:
       +materialized: incremental
       +on_schema_change: append_new_columns
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       intermediate:
         +schema: intermediate
-
-      # ----------------------------------------------------------------------
-      # SILVER normalizado - slv_* con PKs/FKs explicitas
-      # ----------------------------------------------------------------------
       silver:
         +materialized: view
         CityBike:
@@ -61,27 +46,19 @@ models:
         NOAA:
           +schema: NOAA
 
-    # ------------------------------------------------------------------------
-    # MARTS - Capa Gold (star schema para consumo Power BI)
-    # ------------------------------------------------------------------------
     marts:
       +materialized: view
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
       +schema: MARTS
+      core:
+        +schema: CORE
 
-# ============================================================================
-# CONFIGURACION DE SNAPSHOTS
-# ============================================================================
 snapshots:
   +transient: false
   +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
   +target_schema: snapshots
   +snowflake_warehouse: 'WH_ANALISIS'
-  
 
-# ============================================================================
-# CONFIGURACION DE TESTS
-# ============================================================================
 tests:
   +store_failures: false
   +severity: error

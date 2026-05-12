@@ -1,9 +1,4 @@
--- Test: cuenta de OBSERVACIONES UNICAS por elemento en bronze (filtrado a elementos validos)
--- debe coincidir con la cuenta en slv_weather_observation (vigente, deduplicada por snapshot SCD2).
--- FIX (ronda 6): removido 'station_id in (...)' del bronze_filter. El snapshot ya NO filtra
--- estaciones (decision: mantener todas las US para futuro fct_us_temperature). Si bronze
--- filtra a 2 estaciones y silver tiene N, las cuentas no cuadran -> test FAIL falso.
--- Ahora ambos lados ven todas las estaciones GHCN-Daily disponibles en bronze.
+-- Test: conteo de observaciones unicas por elemento debe coincidir entre bronze y silver.
 
 {{ bronze_silver_count_diff(
     bronze_relation=source('NOAA', 'noaa_raw_year'),

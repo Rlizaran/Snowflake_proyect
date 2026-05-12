@@ -1,6 +1,4 @@
--- Silver lookup: tipos de usuario CityBike + descripcion (valor fijo: member, casual)
--- FIX: removido 'where member_casual is not null' (stg ya filtra; era redundante).
--- Materializado como VIEW (default del proyecto): dominio cerrado de 2 valores.
+-- slv_user_type: lookup de tipos de usuario CityBike (member, casual).
 
 with distinct_types as (
     select distinct member_casual
@@ -8,7 +6,10 @@ with distinct_types as (
 )
 
 select
+    -- PK
     {{ dbt_utils.generate_surrogate_key(['member_casual']) }} as user_type_code,
+
+    -- atributos
     member_casual,
     case member_casual
         when 'member' then 'Suscriptor anual / mensual'
