@@ -102,7 +102,7 @@ def process(conn, label, stage, start_month, end_month, prefix):
 
 
 def main():
-    load_dotenv()
+    load_dotenv(override=True)
     while True:
         mode = input("Entorno destino (DEV, PRO): ").strip().upper()
         if mode in ("DEV", "PRO"):
