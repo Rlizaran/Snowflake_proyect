@@ -65,6 +65,8 @@ sources:
                   arguments: { values: ['member','casual'] }
           - name: source_file
             data_type: varchar
+            data_tests:
+              - not_null            
           - name: load_ts
             data_type: timestamp_ntz
             data_tests:
@@ -120,6 +122,8 @@ sources:
                   arguments: { values: ['member','casual'] }
           - name: source_file
             data_type: varchar
+            data_tests:
+              - not_null
           - name: load_ts
             data_type: timestamp_ntz
             data_tests:

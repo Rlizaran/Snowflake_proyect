@@ -1,4 +1,4 @@
-# Descarga archivos JC de Citi Bike, descomprime el zip y sube el CSV al stage de Snowflake.
+# Descarga archivos JC + NY (202604+) de Citi Bike, descomprime los zips y sube los CSV a Snowflake stages.
 
 import os
 import zipfile
@@ -26,27 +26,30 @@ def months(start, end):
     return out
 
 
-# Lista los YYYYMM que ya estan en el stage para no volver a subirlos.
-def existing_months(conn, stage):
-    sql = f"LS @{stage}"
-    rows = conn.cursor().execute(sql).fetchall()
+# Devuelve los YYYYMM ya cargados en el stage. Si hay prefijo busca '{prefix}YYYYMM'; si no, los 6 primeros chars del basename.
+def existing_months(conn, stage, prefix=""):
+    rows = conn.cursor().execute(f"LS @{stage}").fetchall()
     found = set()
     for r in rows:
         name = r[0]
-        # Patron esperado: .../JC-YYYYMM-citibike-tripdata.csv.gz
-        idx = name.find("JC-")
-        if idx == -1:
-            continue
-        yyyymm = name[idx + 3:idx + 9]
+        if prefix:
+            idx = name.find(prefix)
+            if idx == -1:
+                continue
+            yyyymm = name[idx + len(prefix):idx + len(prefix) + 6]
+        else:
+            base = name.split("/")[-1]
+            yyyymm = base[:6]
         if yyyymm.isdigit():
             found.add(yyyymm)
     return found
 
-# Descarga el zip del mes probando las dos variantes de nombre que usa Citi Bike.
-def download(yyyymm, folder):
+
+# Descarga el zip del mes probando las dos variantes de nombre que usa Citi Bike (.csv.zip y .zip).
+def download(yyyymm, folder, prefix=""):
     candidates = [
-        f"JC-{yyyymm}-citibike-tripdata.csv.zip",
-        f"JC-{yyyymm}-citibike-tripdata.zip",
+        f"{prefix}{yyyymm}-citibike-tripdata.csv.zip",
+        f"{prefix}{yyyymm}-citibike-tripdata.zip",
     ]
     for name in candidates:
         r = requests.get(f"{S3_BASE}/{name}", stream=True, timeout=120)
@@ -62,80 +65,73 @@ def download(yyyymm, folder):
     return None
 
 
-# Descomprime el zip y devuelve la ruta del CSV extraído sin modificarlo.
-def unzip_csv(zip_path, folder):
+# Descomprime y devuelve TODOS los CSVs del zip (algunos meses vienen en partes).
+def unzip_csvs(zip_path, folder):
+    extracted = []
     with zipfile.ZipFile(zip_path) as zf:
-        csv = next(n for n in zf.namelist()
-                   if n.lower().endswith(".csv") and not n.startswith("__MACOSX"))
-        zf.extract(csv, folder)
-    return folder / csv
+        for n in zf.namelist():
+            if n.lower().endswith(".csv") and not n.startswith("__MACOSX"):
+                zf.extract(n, folder)
+                extracted.append(folder / n)
+    return extracted
 
 
-# Sube el CSV al stage con PUT.
+# Sube un CSV al stage (OVERWRITE=TRUE para reemplazar si ya existe).
 def put(conn, csv_path, stage):
-    sql = f"PUT file://{csv_path.as_posix()} @{stage} OVERWRITE=TRUE"
-    conn.cursor().execute(sql).fetchall()
+    conn.cursor().execute(f"PUT file://{csv_path.as_posix()} @{stage} OVERWRITE=TRUE").fetchall()
+
+
+# Procesa un origen completo: lista meses pendientes, descarga, descomprime y sube.
+def process(conn, label, stage, start_month, end_month, prefix):
+    print(f"\n--- {label} -> stage {stage} ---")
+    cargados   = existing_months(conn, stage, prefix)
+    pendientes = [m for m in months(start_month, end_month) if m not in cargados]
+    print(f"  pendientes: {len(pendientes)}")
+    if not pendientes:
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        folder = Path(tmp)
+        for m in pendientes:
+            z = download(m, folder, prefix)
+            if not z:
+                print(f"  [{label}] {m}: no encontrado en S3, salto")
+                continue
+            for csv in unzip_csvs(z, folder):
+                put(conn, csv, stage)
+                print(f"  [{label}] subido: {csv.name}")
 
 
 def main():
-    load_dotenv()
+    load_dotenv(override=True)
     while True:
-        mode = input("Ingrese el entorno de destino (DEV, PRO): ").strip().upper()
-        if mode in ["DEV", "PRO"]:
+        mode = input("Entorno destino (DEV, PRO): ").strip().upper()
+        if mode in ("DEV", "PRO"):
             break
-        print("Opción inválida. Por favor, ingrese DEV o PROD.")
-    db = os.environ.get(f"{mode}_SF_DATABASE")
-    stage = os.environ.get(f"{mode}_SF_STAGE")
+        print("Opcion invalida. DEV o PRO.")
+
+    db        = os.environ.get(f"{mode}_SF_DATABASE")
+    stage_jc  = os.environ.get(f"{mode}_SF_STAGE")
+    stage_ny  = os.environ.get(f"{mode}_SF_STAGE_NY")
+    today     = date.today()
+    current   = f"{today.year:04d}{today.month:02d}"
     print(f"Database: {db}")
-    print(f"Stage: {stage}")
-    today = date.today()
-    meses = months("202401", f"{today.year:04d}{today.month:02d}")
+    print(f"Stages:   JC -> {stage_jc} | NY -> {stage_ny}")
 
     conn = snowflake.connector.connect(
-        account=os.environ["SF_ACCOUNT"],
-        user=os.environ["SF_USER"],
-        password=os.environ["SF_PASSWORD"],
-        role=os.environ.get("SF_ROLE"),
-        warehouse=os.environ.get("SF_WAREHOUSE"),
-        database=db,
-        schema=os.environ.get("SF_SCHEMA"),
+        account   = os.environ["SF_ACCOUNT"],
+        user      = os.environ["SF_USER"],
+        password  = os.environ["SF_PASSWORD"],
+        role      = os.environ.get("SF_ROLE"),
+        warehouse = os.environ.get("SF_WAREHOUSE"),
+        database  = db,
+        schema    = os.environ.get("SF_SCHEMA"),
     )
-
     try:
-        # Comparar contra lo que ya esta en el stage para subir solo lo nuevo.
-        ya_cargados = existing_months(conn, stage)
-        pendientes = [m for m in meses if m not in ya_cargados]
-        print(f"En stage: {len(ya_cargados)} | Pendientes: {len(pendientes)}")
-
-        if not pendientes:
-            print("Stage al dia, nada que subir.")
-            return
-
-        with tempfile.TemporaryDirectory() as tmp:
-            folder = Path(tmp)
-            for m in pendientes:
-                print(f"[{m}]")
-                z = download(m, folder)
-                if not z:
-                    print("  no disponible")
-                    continue
-                csv = unzip_csv(z, folder)
-                put(conn, csv, stage)
-                print(f"  subido: {csv.name}")
+        process(conn, "JC", stage_jc, "202401", current, "JC-")
+        process(conn, "NY", stage_ny, "202604", current, "")
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
     main()
-
-
-# Descarga archivos JC de Citi Bike y sube al stage de Snowflake solo los meses que aun no estan cargados.
-
-
-
-
-
-
-
-

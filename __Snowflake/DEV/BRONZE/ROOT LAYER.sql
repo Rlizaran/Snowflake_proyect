@@ -133,6 +133,74 @@ EXCEPTION
         RAISE;
 END;
 
+-- Procedure: carga incremental de CityBike NYC desde el stage interno (202604+)
+CREATE OR REPLACE PROCEDURE CITYBIKE.LOAD_CITYBIKE_NY_INT()
+RETURNS STRING
+LANGUAGE SQL
+AS
+DECLARE
+    v_rows  NUMBER := 0;
+    v_files NUMBER := 0;
+    v_qid   VARCHAR;
+    v_zero  NUMBER := 0;
+BEGIN
+
+    COPY INTO DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_NY (
+        ride_id,
+        rideable_type,
+        started_at,
+        ended_at,
+        start_station_name,
+        start_station_id,
+        end_station_name,
+        end_station_id,
+        start_lat,
+        start_lng,
+        end_lat,
+        end_lng,
+        member_casual,
+        source_file,
+        load_ts
+    )
+    FROM (
+        SELECT
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,
+            SPLIT_PART(METADATA$FILENAME, '/', -1),
+            CURRENT_TIMESTAMP()
+        FROM @DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE_NY
+    )
+    PATTERN = '.*\\.csv\\.gz'
+    ON_ERROR = 'CONTINUE';
+
+    -- Captura el query id del COPY para no perderlo con queries siguientes
+    v_qid := LAST_QUERY_ID(-1);
+
+    -- Detecta caso "0 files processed" donde RESULT_SCAN solo tiene columna status ($1)
+    SELECT COUNT(*) INTO :v_zero
+    FROM   TABLE(RESULT_SCAN(:v_qid))
+    WHERE  $1 LIKE 'Copy executed with 0 files%';
+
+    -- Solo lee $3 (rows_parsed) si hubo archivos cargados, evita "invalid identifier"
+    IF (v_zero = 0) THEN
+        SELECT COALESCE(SUM(TRY_CAST($3 AS NUMBER)), 0), COUNT(*)
+        INTO   :v_rows, :v_files
+        FROM   TABLE(RESULT_SCAN(:v_qid))
+        WHERE  TRY_CAST($3 AS NUMBER) IS NOT NULL;
+    END IF;
+
+    INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
+    VALUES ('LOAD_CITYBIKE_NY_INT', 'OK', 'rows=' || :v_rows || ' files=' || :v_files);
+
+    RETURN 'Carga de datos a citybike_NY exitosa';
+
+EXCEPTION
+    WHEN OTHER THEN
+        INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
+        VALUES ('LOAD_CITYBIKE_NY_INT', 'ERROR', :SQLERRM);
+        RAISE;
+    
+END;
+
 -- Procedure: carga incremental de CityBike Jersey City desde el landing stage interno
 CREATE OR REPLACE PROCEDURE CITYBIKE.LOAD_CITYBIKE_JC()
 RETURNS STRING
@@ -281,5 +349,24 @@ EXCEPTION
     WHEN OTHER THEN
         INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
         VALUES ('REFRESH CITYBIKE_JC STAGE', 'ERROR', :SQLERRM);
+        RAISE;
+END;
+
+-- Procedure: refresca la directory table del stage interno NY antes del task de NY interno
+CREATE OR REPLACE PROCEDURE CITYBIKE.REFRESH_NY_STAGE()
+RETURNS STRING
+LANGUAGE SQL
+AS
+BEGIN
+    ALTER STAGE DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE_NY REFRESH;
+    INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
+    VALUES ('REFRESH CITYBIKE_NY STAGE', 'OK', 'Stage refrescado correctamente');
+
+    RETURN 'NY landing stage refrescado';
+
+EXCEPTION
+    WHEN OTHER THEN
+        INSERT INTO DB_CITYBIKE_LOGS.LOGS.LOAD_LOG (task_name, outcome, details)
+        VALUES ('REFRESH CITYBIKE_NY STAGE', 'ERROR', :SQLERRM);
         RAISE;
 END;
