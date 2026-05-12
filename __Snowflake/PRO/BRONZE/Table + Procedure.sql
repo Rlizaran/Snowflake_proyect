@@ -129,7 +129,7 @@ EXCEPTION
         RAISE;
 END;
 
--- Procedure: carga incremental de CityBike NYC desde el stage interno (2026+)
+-- Procedure: carga incremental de CityBike NYC desde el stage interno (202604+)
 CREATE OR REPLACE PROCEDURE CITYBIKE.LOAD_CITYBIKE_NY_INT()
 RETURNS STRING
 LANGUAGE SQL
@@ -140,7 +140,7 @@ DECLARE
     v_qid   VARCHAR;
     v_zero  NUMBER := 0;
 BEGIN
-    
+
     COPY INTO PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_TRIPS_NY (
         ride_id,
         rideable_type,
@@ -156,7 +156,7 @@ BEGIN
         end_lng,
         member_casual,
         source_file,
-        load_tsDEV_CITYBIKE_BRONZE
+        load_ts
     )
     FROM (
         SELECT
@@ -165,7 +165,7 @@ BEGIN
             CURRENT_TIMESTAMP()
         FROM @PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE_NY
     )
-    PATTERN = '202[6-9][0-9]{2})-citibike-tripdata\\.zip'
+    PATTERN = '.*\\.csv\\.gz'
     ON_ERROR = 'CONTINUE';
 
     -- Captura el query id del COPY para no perderlo con queries siguientes
@@ -345,6 +345,25 @@ EXCEPTION
     WHEN OTHER THEN
         INSERT INTO DB_CITYBIKE_LOGS.PRO.LOAD_LOG (task_name, outcome, details)
         VALUES ('REFRESH CITYBIKE_JC STAGE', 'ERROR', :SQLERRM);
+        RAISE;
+END;
+
+-- Procedure: refresca la directory table del stage interno NY antes del task de NY interno
+CREATE OR REPLACE PROCEDURE DB_CITYBIKE_LOGS.PRO.REFRESH_NY_STAGE()
+RETURNS STRING
+LANGUAGE SQL
+AS
+BEGIN
+    ALTER STAGE PRO_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE_NY REFRESH;
+    INSERT INTO DB_CITYBIKE_LOGS.PRO.LOAD_LOG (task_name, outcome, details)
+    VALUES ('REFRESH CITYBIKE_NY STAGE', 'OK', 'Stage refrescado correctamente');
+
+    RETURN 'NY landing stage refrescado';
+
+EXCEPTION
+    WHEN OTHER THEN
+        INSERT INTO DB_CITYBIKE_LOGS.PRO.LOAD_LOG (task_name, outcome, details)
+        VALUES ('REFRESH CITYBIKE_NY STAGE', 'ERROR', :SQLERRM);
         RAISE;
 END;
 

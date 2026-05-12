@@ -14,12 +14,6 @@ CREATE OR REPLACE FILE FORMAT CITYBIKE.CITYBIKE_NY_CSV
   NULL_IF = ('NULL', '\\N', '')
   COMPRESSION = AUTO;
 
--- Stage interno (landing) para JC: el script Python sube aqui los CSV mensuales
-CREATE OR REPLACE STAGE DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE_NY
-    FILE_FORMAT = CITYBIKE.CITYBIKE_JC_CSV
-    DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Landing stage interno para <amhattan a partir del 202604 (Python PUT)'
-    
 -- File Format CSV para CityBike Jersey City (header simple)
 CREATE OR REPLACE FILE FORMAT CITYBIKE.CITYBIKE_JC_CSV
   TYPE = 'CSV'
@@ -49,6 +43,12 @@ CREATE OR REPLACE STAGE DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE
     FILE_FORMAT = CITYBIKE.CITYBIKE_JC_CSV
     DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'Landing stage interno para Jersey City (Python PUT)';
+
+-- Stage interno (landing) para NY: el script Python sube aqui los CSV de 202604+ (Citi Bike cambio formato)
+CREATE OR REPLACE STAGE DEV_CITYBIKE_BRONZE.CITYBIKE.CITYBIKE_LANDING_STAGE_NY
+    FILE_FORMAT = CITYBIKE.CITYBIKE_JC_CSV
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = 'Landing stage interno para Manhattan a partir de 202604 (Python PUT)';
 
 -- Stage externo apuntando al bucket publico NOAA by station
 CREATE OR REPLACE STAGE DEV_CITYBIKE_BRONZE.NOAA.NOAA_S3_STAGE_STATION
