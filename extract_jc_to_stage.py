@@ -43,10 +43,10 @@ def existing_months(conn, stage):
     return found
 
 # Descarga el zip del mes probando las dos variantes de nombre que usa Citi Bike.
-def download(yyyymm, folder):
+def download(yyyymm, folder, prefix=""):
     candidates = [
-        f"JC-{yyyymm}-citibike-tripdata.csv.zip",
-        f"JC-{yyyymm}-citibike-tripdata.zip",
+        f"{prefix}{yyyymm}-citibike-tripdata.csv.zip",
+        f"{prefix}{yyyymm}-citibike-tripdata.zip",
     ]
     for name in candidates:
         r = requests.get(f"{S3_BASE}/{name}", stream=True, timeout=120)
@@ -85,11 +85,12 @@ def main():
             break
         print("Opción inválida. Por favor, ingrese DEV o PROD.")
     db = os.environ.get(f"{mode}_SF_DATABASE")
-    stage = os.environ.get(f"{mode}_SF_STAGE")
+    stage_jc = os.environ.get(f"{mode}_SF_STAGE")
+    stage_ny = os.environ.get(f"{mode}_SF_STAGE_NY")
     print(f"Database: {db}")
     print(f"Stage: {stage}")
     today = date.today()
-    meses = months("202401", f"{today.year:04d}{today.month:02d}")
+    current_month = f"{today.year:04d}{today.month:02d}"
 
     conn = snowflake.connector.connect(
         account=os.environ["SF_ACCOUNT"],
@@ -101,27 +102,41 @@ def main():
         schema=os.environ.get("SF_SCHEMA"),
     )
 
-    try:
-        # Comparar contra lo que ya esta en el stage para subir solo lo nuevo.
-        ya_cargados = existing_months(conn, stage)
-        pendientes = [m for m in meses if m not in ya_cargados]
-        print(f"En stage: {len(ya_cargados)} | Pendientes: {len(pendientes)}")
+try:
+        # --- PROCESAMIENTO JERSEY CITY (JC) ---
+        print(f"\n--- Procesando JC -> Stage: {stage_jc} ---")
+        meses_jc = months("202401", current_month)
+        cargados_jc = existing_months(conn, stage_jc, "JC-")
+        pendientes_jc = [m for m in meses_jc if m not in cargados_jc]
+        
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            for m in pendientes_jc:
+                z = download_file(m, folder, "JC-")
+                if z:
+                    csvs = unzip_all_csvs(z, folder)
+                    for csv in csvs:
+                        # Usamos el stage de JC
+                        put(conn, csv, stage_jc)
+                        print(f"  [JC] subido a {stage_jc}: {csv.name}")
 
-        if not pendientes:
-            print("Stage al dia, nada que subir.")
-            return
+        # --- PROCESAMIENTO NEW YORK (NY) ---
+        print(f"\n--- Procesando NY -> Stage: {stage_ny} ---")
+        meses_ny = months("202604", current_month)
+        # En NY el prefijo suele ser el año, pasamos cadena vacía
+        cargados_ny = existing_months(conn, stage_ny, "") 
+        pendientes_ny = [m for m in meses_ny if m not in cargados_ny]
 
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
-            for m in pendientes:
-                print(f"[{m}]")
-                z = download(m, folder)
-                if not z:
-                    print("  no disponible")
-                    continue
-                csv = unzip_csv(z, folder)
-                put(conn, csv, stage)
-                print(f"  subido: {csv.name}")
+            for m in pendientes_ny:
+                z = download_file(m, folder, "") 
+                if z:
+                    csvs = unzip_all_csvs(z, folder)
+                    for csv in csvs:
+                        # Usamos el stage de NY
+                        put(conn, csv, stage_ny)
+                        print(f"  [NY] subido a {stage_ny}: {csv.name}")
     finally:
         conn.close()
 
