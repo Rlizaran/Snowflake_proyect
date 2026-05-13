@@ -1,4 +1,5 @@
 # Sources: tabla Bronze del schema NOAA en {DEV_,PRO_}CITYBIKE_BRONZE.
+# Tests minimos: solo detectan fallos de ingesta. La validacion fina vive en el snapshot + stg.
 
 version: 2
 
@@ -16,37 +17,25 @@ sources:
 
     tables:
       - name: noaa_raw_year
-        description: 'Observaciones meteorologicas raw en formato long: una fila por (station, fecha, elemento).'
+        description: 'Observaciones meteorologicas raw en formato long (station, fecha, elemento).'
         columns:
           - name: station_id
-            description: 'ID estacion meteorologica (USW00094728=Manhattan, USW00014734=Newark/JC).'
             data_type: varchar
             data_tests:
-              - not_null:    { config: { severity: warn } }
+              - not_null: { config: { severity: warn } }
           - name: observation_date
-            description: 'Fecha en formato YYYYMMDD (varchar bronze).'
             data_type: varchar
-            data_tests:
-              - not_null:    { config: { severity: warn } }
           - name: element
-            description: 'Codigo del elemento NOAA (TMAX, TMIN, PRCP, SNOW, etc.).'
             data_type: varchar
-            data_tests:
-              - not_null:    { config: { severity: warn } }
           - name: data_value
-            description: 'Valor de la observacion en decimas de unidad (segun NOAA codebook).'
             data_type: varchar
-            data_tests:
-              - not_null:    { config: { severity: warn } }
           - name: m_flag
             data_type: varchar
           - name: q_flag
-            description: 'Quality flag (no nulo = observacion sospechosa).'
             data_type: varchar
           - name: s_flag
             data_type: varchar
           - name: obs_time
-            description: 'Hora de la observacion (HHMM, 4 digitos; default 2400 si NULL).'
             data_type: varchar
           - name: source_file
             data_type: varchar
