@@ -30,12 +30,6 @@ with daily_trips as (
     group by t.trip_date, c.city
 ),
 
-city_to_station as (
-    select 'Manhattan' as city_name, 'USW00094728' as station_id
-    union all
-    select 'Jersey City' as city_name, 'USW00014734' as station_id
-),
-
 weather as (
     select * from {{ ref('fct_weather_daily') }}
 )

@@ -79,7 +79,7 @@ models:
       - name: station_name
       - name: city
         data_tests:
-          - accepted_values: { arguments: { values: ['NY','JC'] } }
+          - accepted_values: { arguments: { values: ['Manhattan','Jersey City'] } }
       - name: lat
       - name: lng
       - name: state
