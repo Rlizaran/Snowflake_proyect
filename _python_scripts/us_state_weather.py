@@ -32,5 +32,5 @@ df_final['state'] = df_final['state'].str.strip()
 df_final['city'] = df_final['station_name'].apply(lambda x: x.split(' ')[0].title())
 
 # 6. Save as CSV for dbt Seed
-df_final.to_csv('../seeds/slv_weather_station.csv', index=False)
-print(f"Success! Created 'slv_weather_station.csv' with {len(df_final)} stations.")
+df_final.to_csv('../seeds/weathweather_station_user_station.csv', index=False)
+print(f"Success! Created 'weather_station_us.csv' with {len(df_final)} stations.")
