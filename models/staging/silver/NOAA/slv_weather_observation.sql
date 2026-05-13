@@ -1,7 +1,9 @@
 -- slv_weather_observation: fact NOAA long format (un row por station, date, element).
 
 with obs as (
-    select * from {{ ref('stg_NOAA__noaa_raw_year') }}
+    select * from {{ ref('stg_NOAA__noaa_raw_year') }} stg
+    left join {{ ref('slv_weather_station') }} ws
+    on stg.station_id = ws.station_weather_id
 )
 
 select
