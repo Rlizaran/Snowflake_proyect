@@ -4,7 +4,7 @@ import requests
 
 # 1. Load your station IDs (the file I generated for you)
 # Or use your original 'Task Control_2026-05-13-1120.csv'
-df_user = pd.read_csv('seeds/us_station_ids.csv')
+df_user = pd.read_csv('us_station_ids.csv')
 target_ids = set(df_user['STATION_ID'].unique())
 
 # 2. Download NOAA's Global Station Directory (GHCND)
