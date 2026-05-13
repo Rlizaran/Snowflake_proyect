@@ -4,12 +4,20 @@ name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
 
+# El profile debe coincidir con el definido en profiles.yml (en dbt Core) o
+# con la conexión seleccionada en dbt Cloud.
 profile: 'snowflake_proyect'
 
 quoting:
   database: false
   schema: false
   identifier: false
+
+
+# ----------------------------------------------------------------------------
+# Rutas de archivos (no es necesario modificar a no ser que se renombren
+# los directorios estándar)
+# ----------------------------------------------------------------------------
 
 model-paths:    ["models"]
 analysis-paths: ["analyses"]
@@ -18,11 +26,27 @@ seed-paths:     ["seeds"]
 macro-paths:    ["macros"]
 snapshot-paths: ["snapshots"]
 
+
 target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
 
+# ----------------------------------------------------------------------------
+# Hooks a nivel de proyecto
+# ----------------------------------------------------------------------------
+# `on-run-start` se ejecuta al inicio de cada `dbt run/build/seed/snapshot`.
+# Lo usamos para asegurar que el warehouse de Snowflake está activo antes
+# de lanzar las transformaciones (si está suspendido y la primera query
+# tarda mucho, se evitan timeouts).
+
+# on-run-start:
+# - "ALTER WAREHOUSE WH_NYCBIKE_DEV IF SUSPENDED;"
+# - "ALTER WAREHOUSE WH_ANALISIS IF SUSPENDED;"
+
+# ============================================================================
+# CONFIGURACIÓN DE MODELOS
+# ============================================================================
 models:
   +transient: false
   snowflake_proyect:
@@ -53,12 +77,37 @@ models:
       core:
         +schema: CORE
 
+# ============================================================================
+# CONFIGURACIÓN DE SEEDS
+# ============================================================================
+# Los seeds van a la base de datos BRONZE (son datos crudos cargados desde
+seeds:
+  +schema: seed_data
+  +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
+
+  snowflake_proyect:
+    weather_station_us:
+      # Tipos de columna explícitos para evitar inferencias erróneas
+      +column_types:
+        station_id: VARCHAR(100)
+        lat: FLOAT
+        lng: FLOAT
+        state: VARCHAR(3)
+        station_name: VARCHAR(100)
+        city: VARCHAR(100)
+
+# ============================================================================
+# CONFIGURACIÓN DE SNAPSHOTS
+# ============================================================================
 snapshots:
   +transient: false
   +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
   +target_schema: snapshots
   +snowflake_warehouse: 'WH_ANALISIS'
 
+# ============================================================================
+# CONFIGURACIÓN DE TESTS
+# ============================================================================
 tests:
   +store_failures: false
   +severity: error
