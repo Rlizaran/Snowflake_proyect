@@ -169,7 +169,7 @@ models:
                 field: fecha_id
       - name: city
         data_tests:
-          - accepted_values: { arguments: { values: ['NY','JC'] } }
+          - accepted_values: { arguments: { values: ['Manhattan','Jersey City'] } }
       - name: temp_max_c
       - name: temp_min_c
       - name: temp_avg_c
