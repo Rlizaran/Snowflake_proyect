@@ -115,18 +115,17 @@ models:
               arguments:
                 to: ref('dim_fecha')
                 field: fecha_id
-      - name: city_name
+      - name: city_id
         data_tests:
           - not_null
-          - accepted_values:
-              arguments: { values: ['Manhattan','Jersey City'] }
-      - name: station_id
+          - unique
+      - name: station_weather_id
         description: 'FK a la estacion NOAA mapeada a la ciudad (Manhattan->USW00094728, JC->USW00014734).'
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_station_weather')
-                field: station_id
+                field: station_weather_id
       - name: n_trips
         data_tests: [not_null]
       - name: n_trips_member
@@ -134,6 +133,7 @@ models:
       - name: n_trips_classic
       - name: n_trips_electric
       - name: avg_duration_min
+      - name: avg_distance_km
       - name: temp_max_c
       - name: temp_min_c
       - name: temp_avg_c
@@ -147,19 +147,19 @@ models:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: fct_weather_daily
-    description: 'Fact diario de clima por estacion (wide). 1 row por (station_id, observation_date).'
+    description: 'Fact diario de clima por estacion (wide). 1 row por (station_weather_id, observation_date).'
     columns:
       - name: daily_id
-        description: 'PK surrogate MD5(station_id, observation_date).'
+        description: 'PK surrogate MD5(station_weather_id, observation_date).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
-      - name: station_id
+      - name: station_weather_id
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_station_weather')
-                field: station_id
+                field: station_weather_id
       - name: observation_date
         data_tests:
           - not_null
@@ -167,9 +167,10 @@ models:
               arguments:
                 to: ref('dim_fecha')
                 field: fecha_id
-      - name: city
+      - name: city_id
         data_tests:
-          - accepted_values: { arguments: { values: ['Manhattan','Jersey City'] } }
+          - not_null
+          - unique
       - name: temp_max_c
       - name: temp_min_c
       - name: temp_avg_c

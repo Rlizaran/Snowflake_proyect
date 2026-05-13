@@ -83,7 +83,7 @@ models:
       - name: is_electric
 
   - name: dim_station
-    description: 'Estaciones CityBike (NY + JC) con nombre y coordenadas canonicas.'
+    description: 'Estaciones CityBike y coordenadas canonicas.'
     columns:
       - name: station_id
         description: 'PK de estacion.'
@@ -97,16 +97,16 @@ models:
   - name: dim_station_weather
     description: 'Estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC).'
     columns:
-      - name: station_id
+      - name: station_weather_id
         description: 'PK de estacion meteo.'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_name
-      - name: city
+      - name: city_id
         data_tests:
-          - accepted_values:
-              arguments: { values: ['Manhattan','Jersey City'] }
+          - not_null
+          - unique
       - name: lat
       - name: lng
       - name: state
