@@ -6,7 +6,7 @@ with raw_stations as (
 
 select
     -- PK
-    stations_id as station_weather_id,
+    station_id as station_weather_id,
 
     -- atributos
     station_name,
@@ -15,5 +15,5 @@ select
     lng,
     state,
     elevation_m
-    
+
 from raw_stations
