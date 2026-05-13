@@ -18,37 +18,39 @@
 with raw_src as (
     select
         -- PK
-        upper(trim(station_id)) || '|' || trim(observation_date) || '|' || upper(trim(element)) as scd_key,
+        upper(trim(noaa.station_id)) || '|' || trim(noaa.observation_date) || '|' || upper(trim(noaa.element)) as scd_key,
 
         -- atributos
-        upper(trim(station_id))                                                                  as station_id,
-        to_date(observation_date, 'YYYYMMDD')                                                    as observation_date,
-        upper(trim(element))                                                                     as element,
+        upper(trim(noaa.station_id))                                                                  as station_id,
+        to_date(noaa.observation_date, 'YYYYMMDD')                                                    as observation_date,
+        upper(trim(noaa.element))                                                                     as element,
         case
-            when upper(trim(element)) in ('TMAX','TMIN','PRCP','AWND','WSF2','WSF5')
-                then round(try_to_decimal(data_value, 18, 2) / 10, 2)
-            else try_to_decimal(data_value, 18, 2)
+            when upper(trim(noaa.element)) in ('TMAX','TMIN','PRCP','AWND','WSF2','WSF5')
+                then round(try_to_decimal(noaa.data_value, 18, 2) / 10, 2)
+            else try_to_decimal(noaa.data_value, 18, 2)
         end::decimal(18,2)                                                                       as data_value,
-        trim(m_flag)                                                                             as m_flag,
-        trim(q_flag)                                                                             as q_flag,
-        trim(s_flag)                                                                             as s_flag,
+        trim(noaa.m_flag)                                                                             as m_flag,
+        trim(noaa.q_flag)                                                                             as q_flag,
+        trim(noaa.s_flag)                                                                             as s_flag,
         case
-            when coalesce(trim(q_flag), '') in ('Z','G', '') then 'OK'
-            when trim(q_flag) = 'S'                          then 'SUSPECT'
-            when trim(q_flag) in ('I','X')                   then 'INVALID'
-            when trim(q_flag) in ('M','R','D','T','N')       then 'PROCESSING'
-            when trim(q_flag) in ('L','O','K','W')           then 'METADATA'
+            when coalesce(trim(noaa.q_flag), '') in ('Z','G', '') then 'OK'
+            when trim(noaa.q_flag) = 'S'                          then 'SUSPECT'
+            when trim(noaa.q_flag) in ('I','X')                   then 'INVALID'
+            when trim(noaa.q_flag) in ('M','R','D','T','N')       then 'PROCESSING'
+            when trim(noaa.q_flag) in ('L','O','K','W')           then 'METADATA'
             else 'UNKNOWN'
         end                                                                                      as q_flag_category,
-        coalesce(try_cast(obs_time as int), 2400)                                                as obs_time,
+        coalesce(try_cast(noaa.obs_time as int), 2400)                                                as obs_time,
 
         -- linaje
-        source_file,
-        load_ts
-    from {{ source('NOAA', 'noaa_raw_year') }}
-    where station_id is not null
-      and to_date(observation_date, 'YYYYMMDD') >= TO_DATE('20240101', 'YYYYMMDD')
-      and upper(trim(element)) in ('TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5')
+        noaa.source_file,
+        noaa.load_ts
+    from {{ source('NOAA', 'noaa_raw_year') }} noaa
+    inner join {{ ref('weather_station_us') }} ws
+    on noaa.station_id = ws.station_id
+    where noaa.station_id is not null
+      and to_date(noaa.observation_date, 'YYYYMMDD') >= TO_DATE('20240101', 'YYYYMMDD')
+      and upper(trim(noaa.element)) in ('TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5')
 ),
 
 deduped as (
