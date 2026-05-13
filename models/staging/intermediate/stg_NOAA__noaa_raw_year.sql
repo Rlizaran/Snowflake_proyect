@@ -3,11 +3,9 @@
 {{ config(materialized='view') }}
 
 with current_version as (
-    select noaa.*
-    from {{ ref('snp_NOAA__noaa_raw_year') }} noaa
-    left join {{ ref('weather_station_us') }} ws
-    on noaa.station_id = ws.station_weather_id
-    where noaa.dbt_valid_to is null
+    select *
+    from {{ ref('snp_NOAA__noaa_raw_year') }}
+    where dbt_valid_to is null
 )
 
 select
