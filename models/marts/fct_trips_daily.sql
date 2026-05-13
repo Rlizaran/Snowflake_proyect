@@ -42,5 +42,11 @@ select
     min(trip_duration_min) as min_duration_min,
     max(trip_duration_min) as max_duration_min,
     median(trip_duration_min)::decimal(10,2)  as median_duration_min
+    avg(distance_in_km)::decimal(10,2) as avg_distance_km,
+    sum(distance_in_km) as total_distance_km,
+    min(distance_in_km) as min_distance_km,
+    max(distance_in_km) as max_distance_km,
+    median(distance_in_km)::decimal(10,2)  as median_distance_km
+
 from trips
 group by trip_date, city_id, rideable_type_code, user_type_code
