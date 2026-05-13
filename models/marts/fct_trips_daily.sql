@@ -41,7 +41,7 @@ select
     sum(trip_duration_min) as total_duration_min,
     min(trip_duration_min) as min_duration_min,
     max(trip_duration_min) as max_duration_min,
-    median(trip_duration_min)::decimal(10,2)  as median_duration_min
+    median(trip_duration_min)::decimal(10,2)  as median_duration_min,
     avg(distance_in_km)::decimal(10,2) as avg_distance_km,
     sum(distance_in_km) as total_distance_km,
     min(distance_in_km) as min_distance_km,
