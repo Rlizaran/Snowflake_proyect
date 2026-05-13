@@ -1,3 +1,7 @@
--- dim_weather_element: pass-through de slv_weather_element (TMAX, TMIN, PRCP, etc.).
+-- dim_weather_element: passthrough de slv_weather_element.
 
-select * from {{ ref('slv_weather_element') }}
+select
+    element_code,
+    description,
+    unit
+from {{ ref('slv_weather_element') }}

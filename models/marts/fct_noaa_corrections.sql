@@ -10,7 +10,7 @@ select
 
     -- claves SCD2
     scd_key,
-    station_id,
+    station_id                as station_weather_id,
     observation_date,
     year(observation_date)    as observation_year,
     quarter(observation_date) as observation_quarter,
@@ -33,9 +33,5 @@ select
     -- flags BI
     case when dbt_valid_to is null     then true else false end as is_current,
     case when dbt_valid_to is not null then true else false end as is_superseded,
-    case when q_flag_category in ('SUSPECT','INVALID') then true else false end as is_problematic,
-
-    -- linaje fuente
-    source_file,
-    load_ts
+    case when q_flag_category in ('SUSPECT','INVALID') then true else false end as is_problematic
 from snap

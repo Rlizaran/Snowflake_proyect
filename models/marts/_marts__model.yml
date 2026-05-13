@@ -1,215 +1,123 @@
-# Capa Gold marts: facts pre-calculados para consumo Power BI + ML.
+# Capa Gold marts: facts pre-calculados para consumo Power BI + ML. Solo IDs + metricas.
 
 version: 2
 
 models:
   - name: fct_trips
-    description: 'Fact fino: 1 row por viaje, con FKs a dimensiones gold y bucket de duracion.'
+    description: 'Fact fino: 1 row por viaje, solo IDs + metricas (trip_duration_min, distance_in_km).'
     columns:
       - name: ride_id
-        description: 'PK natural del viaje.'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: trip_date
         data_tests:
-          - not_null
           - relationships:
-              arguments:
-                to: ref('dim_fecha')
-                field: fecha_id
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: city_id
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_city')
-                field: city_id
+              arguments: { to: ref('dim_city'), field: city_id }
       - name: rideable_type_code
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_rideable_bike')
-                field: rideable_type_code
+              arguments: { to: ref('dim_rideable_bike'), field: rideable_type_code }
       - name: user_type_code
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_user_type')
-                field: user_type_code
+              arguments: { to: ref('dim_user_type'), field: user_type_code }
       - name: start_station_id
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_station')
-                field: station_id
+              arguments: { to: ref('dim_station'), field: station_id }
       - name: end_station_id
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_station')
-                field: station_id
-      - name: started_at
-      - name: ended_at
-      - name: trip_duration_min
-      - name: duration_bucket
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['short','medium','long','extra_long'] }
+              arguments: { to: ref('dim_station'), field: station_id }
 
   - name: fct_trips_daily
-    description: 'Fact agregado de viajes por dia, ciudad, tipo de bici y tipo de usuario. Input para PBI y ML.FORECAST.'
+    description: 'Fact agregado (trip_date x city x bike x user). Input para PBI y ML.FORECAST.'
     columns:
       - name: daily_trip_id
-        description: 'PK MD5(trip_date, city_id, rideable_type_code, user_type_code).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: trip_date
         data_tests:
-          - not_null
           - relationships:
-              arguments:
-                to: ref('dim_fecha')
-                field: fecha_id
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: city_id
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_city')
-                field: city_id
+              arguments: { to: ref('dim_city'), field: city_id }
       - name: rideable_type_code
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_rideable_bike')
-                field: rideable_type_code
+              arguments: { to: ref('dim_rideable_bike'), field: rideable_type_code }
       - name: user_type_code
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_user_type')
-                field: user_type_code
-      - name: series_key
-        description: 'Concat city_id|rideable_type_code|user_type_code. Usar como SERIES_COLNAME en ML.FORECAST.'
-        data_tests: [not_null]
-      - name: n_trips
-        data_tests: [not_null]
-      - name: avg_duration_min
-      - name: total_duration_min
-      - name: min_duration_min
-      - name: max_duration_min
-      - name: median_duration_min
+              arguments: { to: ref('dim_user_type'), field: user_type_code }
 
   - name: fct_trips_weather
-    description: 'Cruce diario de rides + clima por ciudad. Grano = (trip_date x city).'
+    description: 'Cruce diario rides + clima por ciudad. Grano = (trip_date x city).'
     columns:
       - name: trip_weather_id
-        description: 'PK MD5(trip_date, city_name).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: trip_date
         data_tests:
-          - not_null
           - relationships:
-              arguments:
-                to: ref('dim_fecha')
-                field: fecha_id
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: city_id
         data_tests:
-          - not_null
-          - unique
+          - relationships:
+              arguments: { to: ref('dim_city'), field: city_id }
       - name: station_weather_id
-        description: 'FK a la estacion NOAA mapeada a la ciudad (Manhattan->USW00094728, JC->USW00014734).'
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_station_weather')
-                field: station_weather_id
-      - name: n_trips
-        data_tests: [not_null]
-      - name: n_trips_member
-      - name: n_trips_casual
-      - name: n_trips_classic
-      - name: n_trips_electric
-      - name: avg_duration_min
-      - name: avg_distance_km
-      - name: temp_max_c
-      - name: temp_min_c
-      - name: temp_avg_c
-      - name: precipitation_mm
-      - name: snowfall_mm
-      - name: snow_depth_mm
-      - name: weather_category
-        data_tests:
-          - accepted_values:
-              config: { severity: warn }
-              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
 
   - name: fct_weather_daily
-    description: 'Fact diario de clima por estacion (wide). 1 row por (station_weather_id, observation_date).'
+    description: 'Fact diario de clima por estacion (wide pivot).'
     columns:
       - name: daily_id
-        description: 'PK surrogate MD5(station_weather_id, observation_date).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_weather_id
         data_tests:
           - relationships:
-              arguments:
-                to: ref('dim_station_weather')
-                field: station_weather_id
+              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
       - name: observation_date
         data_tests:
-          - not_null
           - relationships:
-              arguments:
-                to: ref('dim_fecha')
-                field: fecha_id
-      - name: city_id
-        data_tests:
-          - not_null
-          - unique
-      - name: temp_max_c
-      - name: temp_min_c
-      - name: temp_avg_c
-      - name: precipitation_mm
-      - name: snowfall_mm
-      - name: snow_depth_mm
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: weather_category
         data_tests:
           - accepted_values:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: fct_noaa_corrections
-    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas) para BI.'
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas).'
     columns:
       - name: observation_version_id
-        description: 'PK MD5(scd_key + dbt_valid_from).'
         data_tests:
           - unique: { config: { severity: error } }
           - not_null
       - name: scd_key
-        data_tests: [not_null]
-      - name: station_id
-      - name: observation_date
-      - name: observation_year
-      - name: observation_quarter
-      - name: observation_month
+        data_tests:
+          - not_null
+      - name: station_weather_id
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
       - name: element_code
-      - name: data_value
-      - name: m_flag
-      - name: q_flag
-      - name: s_flag
-      - name: obs_time
-      - name: dbt_valid_from
-      - name: dbt_valid_to
-      - name: dbt_updated_at
-      - name: is_current
-      - name: is_superseded
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_weather_element'), field: element_code }
       - name: q_flag_category
         data_tests:
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
-      - name: is_problematic

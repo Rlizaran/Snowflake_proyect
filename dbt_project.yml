@@ -32,18 +32,6 @@ clean-targets:
   - "target"
   - "dbt_packages"
 
-# ----------------------------------------------------------------------------
-# Hooks a nivel de proyecto
-# ----------------------------------------------------------------------------
-# `on-run-start` se ejecuta al inicio de cada `dbt run/build/seed/snapshot`.
-# Lo usamos para asegurar que el warehouse de Snowflake está activo antes
-# de lanzar las transformaciones (si está suspendido y la primera query
-# tarda mucho, se evitan timeouts).
-
-# on-run-start:
-# - "ALTER WAREHOUSE WH_NYCBIKE_DEV IF SUSPENDED;"
-# - "ALTER WAREHOUSE WH_ANALISIS IF SUSPENDED;"
-
 # ============================================================================
 # CONFIGURACIÓN DE MODELOS
 # ============================================================================
@@ -80,7 +68,7 @@ models:
 # ============================================================================
 # CONFIGURACIÓN DE SEEDS
 # ============================================================================
-# Los seeds van a la base de datos BRONZE (son datos crudos cargados desde
+# Los seeds van a la base de datos BRONZE (son datos crudos cargados desde CSV).
 seeds:
   +schema: seed_data
   +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
@@ -92,6 +80,7 @@ seeds:
         station_id: VARCHAR(100)
         lat: FLOAT
         lng: FLOAT
+        elevation_m: FLOAT
         state: VARCHAR(3)
         station_name: VARCHAR(100)
         city: VARCHAR(100)

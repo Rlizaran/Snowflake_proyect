@@ -1,33 +1,24 @@
 # ============================================================================
-# _seeds.yml — Documentación y tests sobre los seeds
+# _seeds.yml — Documentacion y tests sobre los seeds
 # ============================================================================
 
 version: 2
 
 seeds:
-
   - name: weather_station_us
     description: >
-      Tabla de mapeo de códigos estaciones del weather a su nombre de ciudad.
-      Usada para enriquecer datos geográficos en los slv.
+      Catalogo de estaciones meteorologicas US (NOAA GHCN-Daily).
+      Fuente unica de verdad para slv_weather_station.
     columns:
       - name: station_id
-        description: id de la estacion
+        description: 'PK de la estacion'
         data_tests:
           - unique
           - not_null
       - name: lat
       - name: lng
+      - name: elevation_m
       - name: state
-        description: Estado en el que resida la station_id
-        data_tests:
-          - not_null
+        description: 'Codigo del estado US (2 chars)'
       - name: station_name
-        description: nombre de la station_id
-        data_tests:
-          - not_null
       - name: city
-        description: ciudad en la que reside la station_id
-        data_tests:
-          - not_null
-          

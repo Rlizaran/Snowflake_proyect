@@ -1,3 +1,8 @@
--- dim_station: pass-through de slv_station (estaciones CityBike NY + JC) para consumo Gold.
+-- dim_station: passthrough de slv_station (estaciones CityBike NY + JC).
 
-select * from {{ ref('slv_station') }}
+select
+    station_id,
+    canonical_name,
+    canonical_lat,
+    canonical_lng
+from {{ ref('slv_station') }}
