@@ -102,8 +102,8 @@ enriched as (
         end_lat,
         end_lng,
         ST_DISTANCE(
-            ST_MAKEPOINT(start_lng, start_lat)::geography,
-            ST_MAKEPOINT(end_lng,   end_lat)::geography
+            ST_MAKEPOINT(start_lng, start_lat),
+            ST_MAKEPOINT(end_lng,   end_lat)
         )/1000 as dist_km,  -- aprox distance in km since its a straight line and not the actual distance
 
         -- atributos usuario / ciudad
