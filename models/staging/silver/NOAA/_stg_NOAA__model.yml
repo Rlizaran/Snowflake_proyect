@@ -29,12 +29,7 @@ models:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_id
-        description: 'FK a slv_weather_station.'
-        data_tests:
-          - relationships:
-              arguments:
-                to: ref('slv_weather_station')
-                field: station_weather_id
+        description: 'FK a slv_weather_station (enforced por construccion: slv_weather_station = inner join seed con stg_NOAA distinct stations).'
       - name: observation_date
         description: 'FK a dim_fecha.'
         data_tests:

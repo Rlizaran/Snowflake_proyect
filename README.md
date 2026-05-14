@@ -288,3 +288,31 @@ Orden SQL Snowflake (una sola vez por entorno):
 - **Incremental MERGE en silver/marts** — solo procesa rows nuevos o de la ventana de backfill.
 - **Stream drain JC/NY** — evita que el `WHEN` quede TRUE indefinido.
 - **Logging** — todo procedure escribe en `DB_CITYBIKE_LOGS.{LOGS|PRO}.LOAD_LOG`.
+
+## Jobs dbt en PRO
+
+| Job | Comando | Schedule | Propósito |
+|---|---|---|---|
+| **Build mensual** | `dbt build && dbt docs generate` | día 28 ~05:00 NY | Pipeline normal post-bronze |
+| **Source freshness diario** | `dbt source freshness` | diario ~09:00 NY | Alerta de bronze stale |
+| **Full refresh periódico** | `dbt build --full-refresh && dbt docs generate` | día 28 cada 3-6 meses ~06:00 NY | Catch correcciones NOAA profundas |
+
+### Razones
+
+**Build mensual** — corre después del task chain de Snowflake (`TSK_BRONZE_MASTER` día 28 03:00 NY → NY S3 + NY interno + JC + NOAA → ~04:00 finaliza). Ejecuta snapshot → models incrementales → tests → docs en orden DAG. Es el único job que transforma datos en cadencia normal. Más frecuencia es desperdicio porque bronze solo se refresca día 28.
+
+**Source freshness diario** — independiente del build, lee solo `MAX(load_ts)` de los sources contra `warn_after 30d / error_after 40d`. Ejecución de ~10 segundos, casi gratis. Te enteras enseguida si un task de Snowflake falló en silencio y bronze quedó stale, sin esperar al día 28.
+
+**Full refresh trimestral o semestral** — los aggregates `fct_trips_daily` y `fct_trips_weather` usan ventana incremental de **7 días** sobre `trip_date`. Si NOAA publica correcciones SCD2 de datos meteorológicos antiguos (más allá de esa ventana), los aggregates no se actualizan automáticamente. El `--full-refresh` reconstruye los modelos incrementales desde cero, captura esas correcciones y limpia cualquier drift acumulado. El snapshot SCD2 no se borra (dbt lo protege del full-refresh por diseño) — solo se rebuildean los models downstream.
+
+### Lo que NO necesitas
+
+- ❌ Job separado de `dbt snapshot` → `dbt build` ya lo ejecuta en orden DAG.
+- ❌ Job separado de `dbt test` → `dbt build` ya corre tests post-models.
+- ❌ Build más frecuente que mensual → bronze no se actualiza más seguido, sería trabajo en vano y costo de warehouse innecesario.
+
+### Notas operativas
+
+- Encadenar `dbt docs generate` al **success** del build (no como job separado). Si falla el build, no generas docs de un estado roto.
+- En **dbt Cloud**: los 3 jobs apuntan al mismo deployment environment (`PRO`), diferentes comandos + cron. Settings → Deploy → Jobs → New Job.
+- En **GitHub Actions / cron externo**: 3 workflows separados con la misma imagen dbt y env vars (`DBT_ENVIRONMENTS=PRO`, `SF_*`).

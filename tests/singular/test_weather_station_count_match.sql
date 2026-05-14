@@ -1,18 +1,18 @@
 -- Test: slv_weather_station debe tener el mismo numero de estaciones que stg_NOAA__noaa_raw_year (current SCD2).
+-- Falla si el snapshot trae stations no presentes en el seed (snapshot stale -> requiere --full-refresh).
 
-with slv_count as (
-    select count(*) as n
-    from {{ ref('slv_weather_station') }}
+with slv as (
+    select count(*) as n from {{ ref('slv_weather_station') }}
 ),
 
-noaa_count as (
-    select count(distinct station_id) as n
-    from {{ ref('stg_NOAA__noaa_raw_year') }}
+noaa as (
+    select count(distinct station_id) as n from {{ ref('stg_NOAA__noaa_raw_year') }}
 )
 
 select
-    'slv_weather_station count != stg_NOAA distinct stations' as issue,
-    s.n as slv_n,
-    n.n as noaa_n
-from slv_count s, noaa_count n
-where s.n != n.n
+    'count mismatch slv_weather_station vs stg_NOAA distinct stations' as issue,
+    coalesce(slv.n, 0)  as slv_n,
+    coalesce(noaa.n, 0) as noaa_n,
+    coalesce(slv.n, 0) - coalesce(noaa.n, 0) as diff
+from slv, noaa
+where coalesce(slv.n, 0) != coalesce(noaa.n, 0)
