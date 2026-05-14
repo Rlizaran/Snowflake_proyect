@@ -1,18 +1,25 @@
--- Test: slv_weather_station debe tener el mismo numero de estaciones que stg_NOAA__noaa_raw_year (current SCD2).
--- Falla si el snapshot trae stations no presentes en el seed (snapshot stale -> requiere --full-refresh).
+-- Test: slv_weather_station debe contener exactamente las stations presentes en stg_NOAA.
+-- Falla si hay stations en stg_NOAA que no estan en el seed (snapshot stale -> dbt snapshot --full-refresh)
+-- o stations en slv sin observaciones (caso poco probable dado el inner join con stg_NOAA).
 
-with slv as (
-    select count(*) as n from {{ ref('slv_weather_station') }}
+with in_noaa_not_in_slv as (
+    select 'NOAA_NOT_IN_SLV' as side, station_id as station_weather_id
+    from (
+        select distinct station_id from {{ ref('stg_NOAA__noaa_raw_year') }}
+        minus
+        select station_weather_id   from {{ ref('slv_weather_station') }}
+    )
 ),
 
-noaa as (
-    select count(distinct station_id) as n from {{ ref('stg_NOAA__noaa_raw_year') }}
+in_slv_not_in_noaa as (
+    select 'SLV_NOT_IN_NOAA' as side, station_weather_id
+    from (
+        select station_weather_id   from {{ ref('slv_weather_station') }}
+        minus
+        select distinct station_id from {{ ref('stg_NOAA__noaa_raw_year') }}
+    )
 )
 
-select
-    'count mismatch slv_weather_station vs stg_NOAA distinct stations' as issue,
-    coalesce(slv.n, 0)  as slv_n,
-    coalesce(noaa.n, 0) as noaa_n,
-    coalesce(slv.n, 0) - coalesce(noaa.n, 0) as diff
-from slv, noaa
-where coalesce(slv.n, 0) != coalesce(noaa.n, 0)
+select * from in_noaa_not_in_slv
+union all
+select * from in_slv_not_in_noaa
