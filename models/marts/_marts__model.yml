@@ -112,7 +112,7 @@ models:
       - name: station_weather_id
         data_tests:
           - relationships:
-              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
+              arguments: { to: ref('snp_NOAA__noaa_raw_year'), field: station_id }
       - name: element_code
         data_tests:
           - relationships:
