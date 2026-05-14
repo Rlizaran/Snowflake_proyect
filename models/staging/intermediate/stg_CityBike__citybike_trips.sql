@@ -101,10 +101,10 @@ enriched as (
         start_lng,
         end_lat,
         end_lng,
-        ST_DISTANCE(
+        coalesce(round(ST_DISTANCE(
             ST_MAKEPOINT(start_lng, start_lat),
             ST_MAKEPOINT(end_lng,   end_lat)
-        )/1000 as dist_km,  -- aprox distance in km since its a straight line and not the actual distance
+        )/1000, 2), 0) as dist_km,  -- aprox distance in km since its a straight line and not the actual distance
 
         -- atributos usuario / ciudad
         member_casual,
