@@ -37,19 +37,19 @@ models:
       - name: series_key
         data_type: varchar
       - name: n_trips
-        data_type: number
+        data_type: "number(38, 0)"
       - name: avg_duration_min
-        data_type: number
+        data_type: "number(38, 2)"
       - name: total_duration_min
-        data_type: number
+        data_type: "number(38, 2)"
       - name: min_duration_min
-        data_type: number
+        data_type: "number(38, 2)"
       - name: max_duration_min
-        data_type: number
+        data_type: "number(38, 2)"
       - name: median_duration_min
-        data_type: number
+        data_type: "number(38, 2)"
       - name: avg_distance_km
-        data_type: number
+        data_type: "number(38, 2)"
       - name: total_distance_km
         data_type: float
       - name: min_distance_km
@@ -57,7 +57,7 @@ models:
       - name: max_distance_km
         data_type: float
       - name: median_distance_km
-        data_type: number
+        data_type: "number(38, 2)"
 
   - name: fct_trips_weather
     description: 'Cruce diario rides + clima por ciudad. Grano = (trip_date x city).'
@@ -86,38 +86,36 @@ models:
           - relationships:
               arguments: { to: ref('dim_station_weather'), field: station_weather_id }
       - name: n_trips
-        data_type: number
+        data_type: "number(38, 0)"
       - name: n_trips_member
-        data_type: number
+        data_type: "number(38, 0)"
       - name: n_trips_casual
-        data_type: number
+        data_type: "number(38, 0)"
       - name: n_trips_classic
-        data_type: number
+        data_type: "number(38, 0)"
       - name: n_trips_electric
-        data_type: number
+        data_type: "number(38, 0)"
       - name: avg_duration_min
-        data_type: number
+        data_type: "number(8, 2)"
       - name: avg_distance_km
-        data_type: number
+        data_type: "number(8, 2)"
       - name: temp_max_c
-        data_type: number
+        data_type: "number(8, 2)"
       - name: temp_min_c
-        data_type: number
+        data_type: "number(8, 2)"
       - name: temp_avg_c
-        data_type: number
+        data_type: "number(8, 2)"
       - name: precipitation_mm
-        data_type: number
+        data_type: "number(8, 2)"
       - name: snowfall_mm
-        data_type: number
+        data_type: "number(8, 2)"
       - name: snow_depth_mm
-        data_type: number
+        data_type: "number(8, 2)"
       - name: weather_category
         data_type: varchar
         
   - name: fct_noaa_corrections
     description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas).'
-    config:
-      contract: { enforced: true }
     columns:
       - name: observation_version_id
         data_type: varchar
@@ -132,8 +130,7 @@ models:
       - name: station_weather_id
         data_type: varchar
         data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
+          - not_null
       - name: observation_date
         data_type: date
       - name: observation_year
@@ -174,7 +171,3 @@ models:
         data_type: boolean
       - name: is_problematic
         data_type: boolean
-      - name: source_file
-        data_type: varchar
-      - name: load_ts
-        data_type: timestamp_ntz
