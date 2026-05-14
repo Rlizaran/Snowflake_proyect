@@ -4,12 +4,20 @@ name: 'snowflake_proyect'
 version: '1.0.0'
 config-version: 2
 
+# El profile debe coincidir con el definido en profiles.yml (en dbt Core) o
+# con la conexión seleccionada en dbt Cloud.
 profile: 'snowflake_proyect'
 
 quoting:
   database: false
   schema: false
   identifier: false
+
+
+# ----------------------------------------------------------------------------
+# Rutas de archivos (no es necesario modificar a no ser que se renombren
+# los directorios estándar)
+# ----------------------------------------------------------------------------
 
 model-paths:    ["models"]
 analysis-paths: ["analyses"]
@@ -18,11 +26,15 @@ seed-paths:     ["seeds"]
 macro-paths:    ["macros"]
 snapshot-paths: ["snapshots"]
 
+
 target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
 
+# ============================================================================
+# CONFIGURACIÓN DE MODELOS
+# ============================================================================
 models:
   +transient: false
   snowflake_proyect:
@@ -53,12 +65,38 @@ models:
       core:
         +schema: CORE
 
+# ============================================================================
+# CONFIGURACIÓN DE SEEDS
+# ============================================================================
+# Los seeds van a la base de datos BRONZE (son datos crudos cargados desde CSV).
+seeds:
+  +schema: seed_data
+  +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
+
+  snowflake_proyect:
+    weather_station_us:
+      # Tipos de columna explícitos para evitar inferencias erróneas
+      +column_types:
+        station_id: VARCHAR(100)
+        lat: FLOAT
+        lng: FLOAT
+        elevation_m: FLOAT
+        state: VARCHAR(3)
+        station_name: VARCHAR(100)
+        city: VARCHAR(100)
+
+# ============================================================================
+# CONFIGURACIÓN DE SNAPSHOTS
+# ============================================================================
 snapshots:
   +transient: false
   +target_database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
   +target_schema: snapshots
   +snowflake_warehouse: 'WH_ANALISIS'
 
+# ============================================================================
+# CONFIGURACIÓN DE TESTS
+# ============================================================================
 tests:
   +store_failures: false
   +severity: error

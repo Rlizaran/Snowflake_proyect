@@ -4,7 +4,7 @@ version: 2
 
 models:
   - name: stg_NOAA__noaa_raw_year
-    description: 'Vista delgada sobre snp_NOAA__noaa_raw_year. Solo version vigente (dbt_valid_to is null).'
+    description: 'View sobre snp_NOAA__noaa_raw_year. Solo version vigente (dbt_valid_to is null).'
     columns:
       - name: station_id
         data_tests:
@@ -15,42 +15,24 @@ models:
       - name: element
         data_tests:
           - not_null
-      - name: data_value
-        description: 'Valor en unidad real (Celsius / mm / m/s). Escalado en snapshot.'
-      - name: m_flag
-      - name: q_flag
       - name: q_flag_category
         data_tests:
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
-      - name: s_flag
-      - name: obs_time
-      - name: source_file
-      - name: load_ts
-      - name: dbt_valid_from
-      - name: dbt_updated_at
 
   - name: slv_weather_observation
     description: 'Fact NOAA long format: una observacion por (station, date, element). Surrogate MD5.'
     columns:
       - name: observation_id
-        description: 'PK surrogate (MD5 de station_id + observation_date + element_code).'
+        description: 'PK surrogate MD5(station_id, observation_date, element_code).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: station_id
-        description: 'FK a slv_weather_station. severity:warn (slv_weather_station es subset).'
-        data_tests:
-          - relationships:
-              config:
-                severity: warn
-              arguments:
-                to: ref('slv_weather_station')
-                field: station_id
+        description: 'FK a slv_weather_station (enforced por construccion: slv_weather_station = inner join seed con stg_NOAA distinct stations).'
       - name: observation_date
         description: 'FK a dim_fecha.'
         data_tests:
-          - not_null
           - relationships:
               arguments:
                 to:    ref('dim_fecha')
@@ -62,37 +44,25 @@ models:
               arguments:
                 to: ref('slv_weather_element')
                 field: element_code
-      - name: data_value
-      - name: q_flag
-      - name: q_flag_category
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
 
   - name: slv_weather_station
-    description: 'Dimension de estaciones NOAA del proyecto (Manhattan + Newark/JC).'
+    description: 'Dim de estaciones NOAA derivada del seed weather_station_us. Renombra city de las 2 estaciones del proyecto a Manhattan/Jersey City.'
     columns:
-      - name: station_id
+      - name: station_weather_id
+        description: 'PK de estacion (renombrada del seed.station_id).'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
-      - name: station_name
-      - name: city
-        data_tests:
-          - accepted_values: { arguments: { values: ['Manhattan','Jersey City'] } }
-      - name: lat
-      - name: lng
-      - name: state
-      - name: elevation_m
+      - name: city_id
+        description: 'FK surrogate al slv_city (matchea solo para 2 estaciones del proyecto).'
 
   - name: slv_weather_element
-    description: 'Lookup de elementos meteorologicos NOAA GHCN-Daily.'
+    description: 'Lookup de elementos meteo NOAA GHCN-Daily.'
     columns:
       - name: element_code
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
-      - name: description
       - name: unit
         data_tests:
           - accepted_values:

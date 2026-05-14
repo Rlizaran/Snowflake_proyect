@@ -16,7 +16,7 @@ ERDs de Bronze, Silver Gold como DBML.
 | Silver | ver `Snowflake_proyect/photos/Silver.png` | ![Silver ERD](photos/Silver.png) |
 | Gold   | ver `Snowflake_proyect/photos/Gold.png`   | ![Gold ERD](photos/Gold.png)     |
 
-Las imágenes viven en `photos/` (placeholder; añadir las screenshots ahí con los nombres listados). La estructura de tasks Snowflake está descrita en "Orquestación Snowflake" más abajo.
+Las imágenes viven en `photos/`.
 
 ## Stack
 
@@ -60,7 +60,7 @@ Tablas raw en VARCHAR para preservar el dato original.
 | `CITYBIKE_TRIPS_JC` | Stage interno `CITYBIKE_LANDING_STAGE` (upload Python) | día 28 03:00 NY | `LOAD_CITYBIKE_JC()` |
 | `NOAA_RAW_YEAR` | S3 público `s3://noaa-ghcn-pds/csv.gz/by_year/` | después de las chains de Citi Bike (AFTER + WHEN stream) | `LOAD_NOAA_YEAR()` |
 
-**¿Por qué dos paths para NY?** Citi Bike cambió formato a partir de 202604 y los archivos del bucket público están parcialmente corruptos. El script Python descarga el zip, lo extrae y lo `PUT`-ea al stage interno limpio. El task del bucket público sigue activo para 2024-202603 (datos cerrados, sin cambio de formato).
+**¿Por qué dos paths para NY?** Citi Bike cambió formato a partir de 202604 y los archivos del bucket público están parcialmente corruptos. El script Python descarga el zip, lo extrae y `PUT` al stage interno limpio. El task del bucket público sigue activo para 2024-202603 (datos cerrados, sin cambio de formato).
 
 **¿Por qué día 28?** Citi Bike publica el mes M durante el mes M+1. El día 28 garantiza que el mes anterior ya cerró y no llegarán partes nuevas corruptas.
 
@@ -141,16 +141,15 @@ Todos los streams y tasks viven en `DB_CITYBIKE_LOGS.{LOGS|PRO}`.
                                        TSK_BRONZE_NOAA
 ```
 
-En **PRO** el cron está consolidado en `TSK_BRONZE_MASTER` (root único, los demás son `AFTER`). En **DEV** cada chain tiene su propio cron (mismo `0 3 28 * * NY`).
-
+En **DEV** y **PRO** el cron está consolidado en `TSK_BRONZE_MASTER` (root único, los demás son `AFTER`).
 ## Jobs dbt recomendados (PRO)
 
 | Job | Comando | Schedule |
 |---|---|---|
-| **Build mensual** | `dbt build --target default` | día 28, ~05:00 NY (tras NOAA del task chain) |
-| **Full refresh trimestral** | `dbt build --full-refresh --target default` | primer día 28 del trimestre, ~06:00 NY |
-| **Source freshness diario** | `dbt source freshness --target default` | diario ~09:00 NY |
-| **Docs** (opcional) | `dbt docs generate` | post-build mensual |
+| **Build mensual** | `dbt build` | día 28, ~05:00 NY (tras NOAA del task chain) |
+| **Full refresh trimestral** | `dbt build --full-refresh` | primer día 28 del trimestre, ~06:00 NY |
+| **Source freshness diario** | `dbt source freshness` | diario ~09:00 NY |
+| **Docs** (opcional) | `dbt docs generate` | cada vez que termina el **build mensual** o el **full refresh trimestral** |
 
 `dbt build` engloba snapshot → models → tests en orden DAG. Corta al primer error.
 
@@ -288,3 +287,25 @@ Orden SQL Snowflake (una sola vez por entorno):
 - **Incremental MERGE en silver/marts** — solo procesa rows nuevos o de la ventana de backfill.
 - **Stream drain JC/NY** — evita que el `WHEN` quede TRUE indefinido.
 - **Logging** — todo procedure escribe en `DB_CITYBIKE_LOGS.{LOGS|PRO}.LOAD_LOG`.
+
+## Jobs dbt en PRO
+
+| Job | Comando | Schedule | Propósito |
+|---|---|---|---|
+| **Build mensual** | `dbt build && dbt docs generate` | día 28 ~05:00 NY | Pipeline normal post-bronze |
+| **Source freshness diario** | `dbt source freshness` | diario ~09:00 NY | Alerta de bronze stale |
+| **Full refresh periódico** | `dbt build --full-refresh && dbt docs generate` | día 28 cada 3-6 meses ~06:00 NY | Catch correcciones NOAA profundas |
+
+### Razones
+
+**Build mensual** — corre después del task chain de Snowflake (`TSK_BRONZE_MASTER` día 28 03:00 NY → NY S3 + NY interno + JC + NOAA → ~04:00 finaliza). Ejecuta snapshot → models incrementales → tests → docs en orden DAG. Es el único job que transforma datos en cadencia normal. Más frecuencia es desperdicio porque bronze solo se refresca día 28.
+
+**Source freshness diario** — independiente del build, lee solo `MAX(load_ts)` de los sources contra `warn_after 30d / error_after 40d`. Ejecución de ~10 segundos, casi gratis. Te enteras enseguida si un task de Snowflake falló en silencio y bronze quedó stale, sin esperar al día 28.
+
+**Full refresh trimestral o semestral** — los aggregates `fct_trips_daily` y `fct_trips_weather` usan ventana incremental de **7 días** sobre `trip_date`. Si NOAA publica correcciones SCD2 de datos meteorológicos antiguos (más allá de esa ventana), los aggregates no se actualizan automáticamente. El `--full-refresh` reconstruye los modelos incrementales desde cero, captura esas correcciones y limpia cualquier drift acumulado. El snapshot SCD2 no se borra (dbt lo protege del full-refresh por diseño) — solo se rebuildean los models downstream.
+
+### Notas operativas
+
+- Encadenar `dbt docs generate` al **success** del build (no como job separado). Si falla el build, no generas docs de un estado roto.
+- En **dbt Cloud**: los 3 jobs apuntan al mismo deployment environment (`PRO`), diferentes comandos + cron
+- En **GitHub Actions / cron externo**: 3 workflows separados con la misma imagen dbt y env vars (`DBT_ENVIRONMENTS=PRO`, `SF_*`).

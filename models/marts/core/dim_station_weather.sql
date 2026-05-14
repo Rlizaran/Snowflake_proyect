@@ -1,3 +1,11 @@
--- dim_station_weather: pass-through de slv_weather_station (estaciones NOAA del proyecto).
+-- dim_station_weather: passthrough de slv_weather_station con columnas explicitas.
 
-select * from {{ ref('slv_weather_station') }}
+select
+    station_weather_id,
+    city_id,
+    station_name,
+    lat,
+    lng,
+    state,
+    elevation_m
+from {{ ref('slv_weather_station') }}

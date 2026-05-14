@@ -6,32 +6,32 @@ obs as (
 ),
 
 stations as (
-    select * from {{ ref('slv_weather_station') }}
+    select * from {{ ref('dim_station_weather') }}
 ),
 
 pivoted as (
     select
-        o.station_id,
+        o.station_id as station_weather_id,
         o.observation_date,
-        s.city,
+        s.city_id,
         max(case when o.element_code = 'TMAX' then o.data_value end) as temp_max_c,
         max(case when o.element_code = 'TMIN' then o.data_value end) as temp_min_c,
         max(case when o.element_code = 'PRCP' then o.data_value end) as precipitation_mm,
         max(case when o.element_code = 'SNOW' then o.data_value end) as snowfall_mm,
         max(case when o.element_code = 'SNWD' then o.data_value end) as snow_depth_mm
     from obs o
-    join stations s on o.station_id = s.station_id
-    group by o.station_id, o.observation_date, s.city
+    join stations s on o.station_id = s.station_weather_id
+    group by o.station_id, o.observation_date, s.city_id
 )
 
 select
     -- PK surrogate
-    {{ dbt_utils.generate_surrogate_key(['station_id', 'observation_date']) }} as daily_id,
+    {{ dbt_utils.generate_surrogate_key(['station_weather_id', 'observation_date']) }} as daily_id,
 
     -- FKs
-    station_id,
+    station_weather_id,
     observation_date,
-    city,
+    city_id,
 
     -- metricas
     temp_max_c,

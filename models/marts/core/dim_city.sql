@@ -1,3 +1,6 @@
--- dim_city: pass-through de slv_city (NY, JC) para consumo Gold.
+-- dim_city: passthrough de slv_city.
 
-select * from {{ ref('slv_city') }}
+select
+    city_id,
+    city
+from {{ ref('slv_city') }}

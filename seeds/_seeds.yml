@@ -1,0 +1,24 @@
+# ============================================================================
+# _seeds.yml — Documentacion y tests sobre los seeds
+# ============================================================================
+
+version: 2
+
+seeds:
+  - name: weather_station_us
+    description: >
+      Catalogo de estaciones meteorologicas US (NOAA GHCN-Daily).
+      Fuente unica de verdad para slv_weather_station.
+    columns:
+      - name: station_id
+        description: 'PK de la estacion'
+        data_tests:
+          - unique
+          - not_null
+      - name: lat
+      - name: lng
+      - name: elevation_m
+      - name: state
+        description: 'Codigo del estado US (2 chars)'
+      - name: station_name
+      - name: city

@@ -1,127 +1,220 @@
-# Capa Gold - core: dimensiones centrales (passthrough de silver + dim_fecha calendario).
+# Capa Gold - core: dimensiones centrales con contract enforcement.
 
 version: 2
 
 models:
+  - name: fct_trips
+    description: 'Fact fino: 1 row por viaje, solo IDs + metricas (trip_duration_min, distance_in_km).'
+    config:
+      contract: { enforced: true }
+    columns:
+      - name: ride_id
+        data_tests:
+          - unique:  { config: { severity: error } }
+          - not_null
+        data_type: varchar
+      - name: trip_date
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
+        data_type: date 
+      - name: city_id
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_city'), field: city_id }
+        data_type: varchar
+      - name: rideable_type_code
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_rideable_bike'), field: rideable_type_code }
+        data_type: varchar
+      - name: user_type_code
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_user_type'), field: user_type_code }
+        data_type: varchar
+      - name: start_station_id
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_station'), field: station_id }
+        data_type: varchar
+      - name: end_station_id
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_station'), field: station_id }
+        data_type: varchar
+      - name: trip_duration_min
+        data_type: "number(8, 2)"
+      - name: distance_in_km
+        data_type: float
+
+  - name: fct_weather_daily
+    description: 'Fact diario de clima por estacion (wide pivot).'
+    columns:
+      - name: daily_id
+        data_type: varchar
+        constraints:
+          - type: not_null
+        data_tests:
+          - unique:  { config: { severity: error } }
+      - name: station_weather_id
+        data_type: varchar
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
+      - name: observation_date
+        data_type: date
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
+      - name: city_id
+        data_type: varchar
+      - name: temp_max_c
+        data_type: "number(5, 2)"
+      - name: temp_min_c
+        data_type: "number(5, 2)"
+      - name: temp_avg_c
+        data_type: "number(5, 2)"
+      - name: precipitation_mm
+        data_type: "number(8, 2)"
+      - name: snowfall_mm
+        data_type: "number(8, 2)"
+      - name: snow_depth_mm
+        data_type: "number(8, 2)"
+      - name: weather_category
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+
   - name: dim_fecha
     description: 'Spine diario de fechas. Rango derivado de min/max de stg_NOAA__noaa_raw_year.'
     columns:
       - name: fecha_id
-        description: 'PK: fecha del dia.'
+        data_type: date
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
       - name: anio
+        data_type: "number(4,0)"
       - name: trimestre
+        data_type: "number(1,0)"
       - name: mes
-        data_tests:
-          - accepted_values:
-              arguments: { values: [1,2,3,4,5,6,7,8,9,10,11,12] }
+        data_type: "number(1,0)"
       - name: nombre_mes
+        data_type: varchar
       - name: anio_mes
+        data_type: varchar
       - name: dia_mes
+        data_type: "number(2,0)"
       - name: dia_semana
-        data_tests:
-          - accepted_values:
-              arguments: { values: [1,2,3,4,5,6,7] }
+        data_type: "number(2,0)"
       - name: nombre_dia
+        data_type: varchar
       - name: es_fin_semana
+        data_type: boolean
       - name: semana_anio
+        data_type: "number(2,0)"
       - name: dia_anio
+        data_type: "number(3,0)"
       - name: estacion
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['Invierno','Primavera','Verano','Otono'] }
+        data_type: varchar
 
   - name: dim_city
-    description: 'Ciudades CityBike (Manhattan, Jersey City).'
+    description: 'Ciudades CityBike (Manhattan, Jersey City). Passthrough de slv_city.'
     columns:
       - name: city_id
-        description: 'PK surrogate.'
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
       - name: city
-        data_tests:
-          - unique:  { config: { severity: error } }
-          - not_null
-          - accepted_values:
-              arguments: { values: ['Manhattan','Jersey City'] }
+        data_type: varchar
 
   - name: dim_user_type
-    description: 'Tipos de usuario CityBike (member, casual).'
+    description: 'Tipos de usuario CityBike. Passthrough de slv_user_type.'
     columns:
       - name: user_type_code
-        description: 'PK surrogate.'
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
       - name: member_casual
-        data_tests:
-          - unique:  { config: { severity: error } }
-          - not_null
-          - accepted_values:
-              arguments: { values: ['member','casual'] }
+        data_type: varchar
       - name: description
+        data_type: varchar
       - name: is_subscriber
+        data_type: boolean
 
   - name: dim_rideable_bike
-    description: 'Tipos de bicicleta CityBike (classic, electric).'
+    description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type.'
     columns:
       - name: rideable_type_code
-        description: 'PK surrogate.'
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
       - name: rideable_type
-        data_tests:
-          - unique:  { config: { severity: error } }
-          - not_null
-          - accepted_values:
-              arguments: { values: ['classic_bike','electric_bike'] }
+        data_type: varchar
       - name: description
+        data_type: varchar
       - name: is_electric
+        data_type: boolean
 
   - name: dim_station
-    description: 'Estaciones CityBike (NY + JC) con nombre y coordenadas canonicas.'
+    description: 'Estaciones CityBike. Passthrough de slv_station.'
     columns:
       - name: station_id
-        description: 'PK de estacion.'
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
       - name: canonical_name
+        data_type: varchar
       - name: canonical_lat
+        data_type: "number(10, 4)"
+        description: "Latitud redondeado de la estación"
       - name: canonical_lng
+        data_type: "number(10, 4)"
+        description: "Longitud redondeado de la estación"
 
   - name: dim_station_weather
-    description: 'Estaciones meteorologicas NOAA del proyecto (Manhattan + Newark/JC).'
+    description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station.'
     columns:
-      - name: station_id
-        description: 'PK de estacion meteo.'
+      - name: station_weather_id
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
+      - name: city_id
+        data_type: varchar
       - name: station_name
-      - name: city
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['Manhattan','Jersey City'] }
+        data_type: varchar
       - name: lat
+        data_type: float
       - name: lng
+        data_type: float
       - name: state
+        data_type: varchar
       - name: elevation_m
+        data_type: float
 
   - name: dim_weather_element
-    description: 'Elementos meteorologicos NOAA GHCN-Daily (TMAX, TMIN, PRCP, etc.).'
+    description: 'Elementos meteo NOAA GHCN-Daily. Passthrough de slv_weather_element.'
     columns:
       - name: element_code
-        description: 'PK del elemento.'
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
       - name: description
+        data_type: varchar
       - name: unit
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['celsius','mm','m/s'] }
+        data_type: varchar

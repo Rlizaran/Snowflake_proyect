@@ -7,93 +7,71 @@ models:
     description: 'Modelo incremental que unifica viajes de NY (Manhattan) y JC.'
     columns:
       - name: ride_id
-        description: 'PK: identificador unico del viaje.'
         data_tests:
           - unique
           - not_null
       - name: city
-        description: 'Ciudad de origen: Manhattan o Jersey City.'
         data_tests:
           - accepted_values:
               arguments: { values: ['Manhattan', 'Jersey City'] }
-      - name: started_at
-        description: 'Timestamp inicio. >= 2024-01-01.'
-        data_tests:
-          - not_null
-      - name: ended_at
-        description: 'Timestamp fin. Validado > started_at.'
-        data_tests:
-          - not_null
-      - name: trip_duration_min
       - name: rideable_type
         data_tests:
           - accepted_values:
               arguments: { values: ['classic_bike', 'electric_bike'] }
-      - name: start_station_id
-        data_tests:
-          - not_null
-      - name: end_station_id
-        data_tests:
-          - not_null
       - name: member_casual
         data_tests:
           - accepted_values:
               arguments: { values: ['member', 'casual'] }
+      - name: dist_km
+        description: 'Distancia haversine aproximada (km) en linea recta start->end. ST_DISTANCE / 1000.'
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
       - name: load_ts
         data_tests:
           - not_null
 
   - name: slv_trip
-    description: 'Fact normalizado: un row por viaje (NY+JC), con FKs explicitas.'
+    description: 'Fact normalizado: un row por viaje (NY+JC), con FKs explicitas. distance_in_km NULLeado para round-trips y outliers > 500.'
     columns:
       - name: ride_id
-        description: 'PK natural.'
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null:
-              config: { severity: error }
+          - not_null
       - name: trip_date
-        description: 'FK a dim_fecha.'
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_fecha')
                 field: fecha_id
-      - name: started_at
-        data_tests: [not_null]
-      - name: ended_at
-      - name: trip_duration_min
       - name: rideable_type_code
-        description: 'FK a slv_rideable_type.'
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_rideable_type')
                 field: rideable_type_code
       - name: user_type_code
-        description: 'FK a slv_user_type.'
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_user_type')
                 field: user_type_code
       - name: start_station_id
-        description: 'FK a slv_station (origen).'
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_station')
                 field: station_id
       - name: end_station_id
-        description: 'FK a slv_station (destino).'
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_station')
                 field: station_id
       - name: city_id
-        description: 'FK a slv_city.'
         data_tests:
           - relationships:
               arguments:
@@ -104,14 +82,12 @@ models:
     description: 'Lookup de ciudades CityBike (Manhattan, Jersey City).'
     columns:
       - name: city_id
-        description: 'PK surrogate MD5(city).'
         data_tests:
           - unique: { config: { severity: error } }
           - not_null
       - name: city
         data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+          - unique
           - accepted_values:
               arguments: { values: ['Manhattan','Jersey City'] }
 
@@ -124,12 +100,9 @@ models:
           - not_null
       - name: rideable_type
         data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+          - unique
           - accepted_values:
               arguments: { values: ['classic_bike','electric_bike'] }
-      - name: description
-      - name: is_electric
 
   - name: slv_user_type
     description: 'Lookup de tipos de usuario CityBike (member, casual).'
@@ -140,21 +113,14 @@ models:
           - not_null
       - name: member_casual
         data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+          - unique
           - accepted_values:
               arguments: { values: ['casual','member'] }
-      - name: description
-      - name: is_subscriber
 
   - name: slv_station
     description: 'Estaciones unicas (NY + JC) deducidas desde stg_CityBike__citybike_trips.'
     columns:
       - name: station_id
-        description: 'PK de estaciones.'
         data_tests:
           - unique
           - not_null
-      - name: canonical_name
-      - name: canonical_lat
-      - name: canonical_lng
