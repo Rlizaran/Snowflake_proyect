@@ -50,9 +50,9 @@ select
     -- distancia limpia (NULL si round-trip o outlier > 500)
     case
         when start_station_id = end_station_id then null
-        when dist_raw > 500                    then null
-        when dist_raw < 0                     then null
-        else dist_raw
+        when dist_km > 500                    then null
+        when dist_km < 0                     then null
+        else dist_km
     end as distance_in_km,
 
     -- FK ciudad
