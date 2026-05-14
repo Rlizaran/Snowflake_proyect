@@ -1,55 +1,148 @@
-# Capa Gold - core: dimensiones centrales. Tests minimos (las dims son passthrough de silver).
+# Capa Gold - core: dimensiones centrales con contract enforcement.
 
 version: 2
 
 models:
   - name: dim_fecha
     description: 'Spine diario de fechas. Rango derivado de min/max de stg_NOAA__noaa_raw_year.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: fecha_id
-        description: 'PK: fecha del dia.'
+        data_type: date
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
-          - not_null
+      - name: anio
+        data_type: number
+      - name: trimestre
+        data_type: number
+      - name: mes
+        data_type: number
+      - name: nombre_mes
+        data_type: varchar
+      - name: anio_mes
+        data_type: varchar
+      - name: dia_mes
+        data_type: number
+      - name: dia_semana
+        data_type: number
+      - name: nombre_dia
+        data_type: varchar
+      - name: es_fin_semana
+        data_type: boolean
+      - name: semana_anio
+        data_type: number
+      - name: dia_anio
+        data_type: number
+      - name: estacion
+        data_type: varchar
 
   - name: dim_city
     description: 'Ciudades CityBike (Manhattan, Jersey City). Passthrough de slv_city.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: city_id
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
+      - name: city
+        data_type: varchar
 
   - name: dim_user_type
     description: 'Tipos de usuario CityBike. Passthrough de slv_user_type.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: user_type_code
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
+      - name: member_casual
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: is_subscriber
+        data_type: boolean
 
   - name: dim_rideable_bike
     description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: rideable_type_code
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
+      - name: rideable_type
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: is_electric
+        data_type: boolean
 
   - name: dim_station
     description: 'Estaciones CityBike. Passthrough de slv_station.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: station_id
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
+      - name: canonical_name
+        data_type: varchar
+      - name: canonical_lat
+        data_type: number
+      - name: canonical_lng
+        data_type: number
 
   - name: dim_station_weather
     description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: station_weather_id
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
+      - name: city_id
+        data_type: varchar
+      - name: station_name
+        data_type: varchar
+      - name: lat
+        data_type: float
+      - name: lng
+        data_type: float
+      - name: state
+        data_type: varchar
+      - name: elevation_m
+        data_type: float
 
   - name: dim_weather_element
     description: 'Elementos meteo NOAA GHCN-Daily. Passthrough de slv_weather_element.'
+    config:
+      contract: { enforced: true }
     columns:
       - name: element_code
+        data_type: varchar
+        constraints:
+          - type: not_null
         data_tests:
           - unique:  { config: { severity: error } }
+      - name: description
+        data_type: varchar
+      - name: unit
+        data_type: varchar

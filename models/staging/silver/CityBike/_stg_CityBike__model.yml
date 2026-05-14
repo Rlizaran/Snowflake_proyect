@@ -22,6 +22,13 @@ models:
         data_tests:
           - accepted_values:
               arguments: { values: ['member', 'casual'] }
+      - name: dist_km
+        description: 'Distancia haversine aproximada (km) en linea recta start->end. ST_DISTANCE / 1000.'
+        data_tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
       - name: load_ts
         data_tests:
           - not_null
