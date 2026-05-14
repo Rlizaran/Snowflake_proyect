@@ -25,16 +25,8 @@ deduplicated as (
 
 enriched as (
     select
-        t.*,
-        ST_DISTANCE(
-            ST_MAKEPOINT(start_c.canonical_lng, start_c.canonical_lat),
-            ST_MAKEPOINT(end_c.canonical_lng,   end_c.canonical_lat)
-        ) as dist_raw
-    from deduplicated t
-    left join {{ ref('slv_station') }} start_c
-        on t.start_station_id = start_c.station_id
-    left join {{ ref('slv_station') }} end_c
-        on t.end_station_id   = end_c.station_id
+        *
+    from deduplicated
 )
 
 select
@@ -59,7 +51,7 @@ select
     case
         when start_station_id = end_station_id then null
         when dist_raw > 500                    then null
-        when dist_raw <= 0                     then null
+        when dist_raw < 0                     then null
         else dist_raw
     end as distance_in_km,
 
