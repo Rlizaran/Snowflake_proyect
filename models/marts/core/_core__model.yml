@@ -34,27 +34,7 @@ models:
         data_tests:
           - relationships:
               arguments: { to: ref('dim_station'), field: station_id }
-
-  - name: fct_weather_daily
-    description: 'Fact diario de clima por estacion (wide pivot).'
-    columns:
-      - name: daily_id
-        data_tests:
-           - unique:  { config: { severity: error } }
-           - not_null
-      - name: station_weather_id
-        data_tests:
-           - relationships:
-               arguments: { to: ref('dim_station_weather'), field: station_weather_id }
-      - name: observation_date
-        data_tests:
-          - relationships:
-               arguments: { to: ref('dim_fecha'), field: fecha_id }
-      - name: weather_category
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
-
+              
   - name: fct_weather_daily
     description: 'Fact diario de clima por estacion (wide pivot).'
     config:
