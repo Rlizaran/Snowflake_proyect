@@ -6,7 +6,7 @@ obs as (
 ),
 
 stations as (
-    select * from {{ ref('slv_weather_station') }}
+    select * from {{ ref('dim_station_weather') }}
 ),
 
 pivoted as (

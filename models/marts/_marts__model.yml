@@ -3,52 +3,6 @@
 version: 2
 
 models:
-  - name: fct_trips
-    description: 'Fact fino: 1 row por viaje, solo IDs + metricas (trip_duration_min, distance_in_km).'
-    config:
-      contract: { enforced: true }
-    columns:
-      - name: ride_id
-        data_type: varchar
-        constraints:
-          - type: not_null
-        data_tests:
-          - unique:  { config: { severity: error } }
-      - name: trip_date
-        data_type: date
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_fecha'), field: fecha_id }
-      - name: city_id
-        data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_city'), field: city_id }
-      - name: rideable_type_code
-        data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_rideable_bike'), field: rideable_type_code }
-      - name: user_type_code
-        data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_user_type'), field: user_type_code }
-      - name: start_station_id
-        data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station'), field: station_id }
-      - name: end_station_id
-        data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station'), field: station_id }
-      - name: trip_duration_min
-        data_type: number
-      - name: distance_in_km
-        data_type: float
-
   - name: fct_trips_daily
     description: 'Fact agregado (trip_date x city x bike x user). Input para PBI y ML.FORECAST.'
     config:
@@ -159,48 +113,7 @@ models:
         data_type: number
       - name: weather_category
         data_type: varchar
-
-  - name: fct_weather_daily
-    description: 'Fact diario de clima por estacion (wide pivot).'
-    config:
-      contract: { enforced: true }
-    columns:
-      - name: daily_id
-        data_type: varchar
-        constraints:
-          - type: not_null
-        data_tests:
-          - unique:  { config: { severity: error } }
-      - name: station_weather_id
-        data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
-      - name: observation_date
-        data_type: date
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_fecha'), field: fecha_id }
-      - name: city_id
-        data_type: varchar
-      - name: temp_max_c
-        data_type: number
-      - name: temp_min_c
-        data_type: number
-      - name: temp_avg_c
-        data_type: number
-      - name: precipitation_mm
-        data_type: number
-      - name: snowfall_mm
-        data_type: number
-      - name: snow_depth_mm
-        data_type: number
-      - name: weather_category
-        data_type: varchar
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
-
+        
   - name: fct_noaa_corrections
     description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas).'
     config:

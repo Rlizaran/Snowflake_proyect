@@ -19,9 +19,9 @@ with daily_trips as (
         avg(t.trip_duration_min)::decimal(10,2)                             as avg_duration_min,
         avg(t.distance_in_km)::decimal(10,2)                                as avg_distance_km
     from {{ ref('slv_trip') }}          t
-    join {{ ref('slv_city') }}          c  on t.city_id = c.city_id
-    join {{ ref('slv_user_type') }}     ut on t.user_type_code = ut.user_type_code
-    join {{ ref('slv_rideable_type') }} rb on t.rideable_type_code = rb.rideable_type_code
+    join {{ ref('dim_city') }}          c  on t.city_id = c.city_id
+    join {{ ref('dim_user_type') }}     ut on t.user_type_code = ut.user_type_code
+    join {{ ref('dim_rideable_bike') }} rb on t.rideable_type_code = rb.rideable_type_code
     {% if is_incremental() %}
     where t.trip_date >= (
         select coalesce(dateadd(day, -7, max(trip_date)), '1900-01-01'::date)
@@ -35,7 +35,7 @@ station_weather as (
     select
         city_id,
         station_weather_id
-    from {{ ref('slv_weather_station') }}
+    from {{ ref('dim_station_weather') }}
 ),
 
 weather as (
