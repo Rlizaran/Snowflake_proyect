@@ -1,6 +1,4 @@
 # Silver NOAA: stg vigente + dim estaciones/elementos + fact observaciones + lookup q_flag.
-# Cambio v8: drop de m_flag/s_flag/q_flag_category en silver downstream. Anadido slv_quality_flag.
-
 version: 2
 
 models:
