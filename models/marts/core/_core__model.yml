@@ -1,6 +1,5 @@
 # Capa Gold - core: dimensiones + fct_trips (table) + fct_weather_daily (view).
-# Cambio v8: constraints solo a nivel tabla. dim_* y fct_weather_daily son views, sin constraints.
-#           Anadido dim_quality_flag (passthrough de slv_quality_flag).
+
 
 version: 2
 
