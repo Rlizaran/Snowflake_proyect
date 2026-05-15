@@ -62,7 +62,7 @@ models:
         data_type: timestamp_ntz
       - name: trip_duration_min
         data_type: "number(10, 2)"
-      - name: trip_distance_km
+      - name: distance_in_km
         data_type: float
       - name: rideable_type_code
         data_type: varchar
@@ -92,8 +92,6 @@ models:
               arguments:
                 to: ref('slv_station')
                 field: station_id
-      - name: distance_in_km
-        data_type: float
       - name: city_id
         data_type: varchar
         data_tests:
