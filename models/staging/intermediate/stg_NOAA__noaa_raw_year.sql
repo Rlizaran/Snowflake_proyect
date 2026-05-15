@@ -1,7 +1,5 @@
 -- stg NOAA: vista delgada sobre snp_NOAA__noaa_raw_year (solo version vigente).
--- Cambio v8: drop de m_flag, s_flag y q_flag_category.
---   m_flag, s_flag: no se usan downstream.
---   q_flag_category: ahora vive en slv_quality_flag (lookup normalizado); el join lo hace BI.
+-- q_flag_category: ahora vive en slv_quality_flag (lookup normalizado); el join lo hace BI.
 
 {{ config(materialized='view') }}
 
