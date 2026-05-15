@@ -92,6 +92,8 @@ models:
               arguments:
                 to: ref('slv_station')
                 field: station_id
+      - name: distance_in_km
+        data_type: float
       - name: city_id
         data_type: varchar
         data_tests:
