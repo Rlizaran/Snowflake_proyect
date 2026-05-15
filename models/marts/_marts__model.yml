@@ -1,4 +1,6 @@
-# Capa Gold marts: facts pre-calculados con contract enforcement. Solo IDs + metricas.
+# Capa Gold marts: facts pre-calculados.
+# Cambio v8: constraints solo a nivel tabla (fct_trips_daily, fct_trips_weather). Las views no llevan constraints.
+#           fct_noaa_corrections (view): drop de m_flag, s_flag, q_flag_category. q_flag queda como FK a dim_quality_flag.
 
 version: 2
 
@@ -7,13 +9,16 @@ models:
     description: 'Fact agregado (trip_date x city x bike x user). Input para PBI y ML.FORECAST.'
     config:
       contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [daily_trip_id]
+      - type: not_null
+        columns: [daily_trip_id]
     columns:
       - name: daily_trip_id
         data_type: varchar
-        constraints:
-          - type: not_null
         data_tests:
-          - unique:  { config: { severity: error } }
+          - unique: { config: { severity: error } }
       - name: trip_date
         data_type: date
         data_tests:
@@ -63,13 +68,16 @@ models:
     description: 'Cruce diario rides + clima por ciudad. Grano = (trip_date x city).'
     config:
       contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [trip_weather_id]
+      - type: not_null
+        columns: [trip_weather_id]
     columns:
       - name: trip_weather_id
         data_type: varchar
-        constraints:
-          - type: not_null
         data_tests:
-          - unique:  { config: { severity: error } }
+          - unique: { config: { severity: error } }
       - name: trip_date
         data_type: date
         data_tests:
@@ -113,61 +121,36 @@ models:
         data_type: "number(8, 2)"
       - name: weather_category
         data_type: varchar
-        
+
   - name: fct_noaa_corrections
-    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas).'
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). View, sin constraints.'
     columns:
       - name: observation_version_id
-        data_type: varchar
-        constraints:
-          - type: not_null
         data_tests:
           - unique: { config: { severity: error } }
+          - not_null
       - name: scd_key
-        data_type: varchar
-        constraints:
-          - type: not_null
+        data_tests:
+          - not_null
       - name: station_weather_id
-        data_type: varchar
         data_tests:
           - not_null
       - name: observation_date
-        data_type: date
       - name: observation_year
-        data_type: number
       - name: observation_quarter
-        data_type: number
       - name: observation_month
-        data_type: number
       - name: element_code
-        data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('dim_weather_element'), field: element_code }
-      - name: data_value
-        data_type: number
-      - name: m_flag
-        data_type: varchar
       - name: q_flag
-        data_type: varchar
-      - name: q_flag_category
-        data_type: varchar
         data_tests:
-          - accepted_values:
-              arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
-      - name: s_flag
-        data_type: varchar
+          - relationships:
+              arguments: { to: ref('dim_quality_flag'), field: q_flag }
+      - name: data_value
       - name: obs_time
-        data_type: number
       - name: dbt_valid_from
-        data_type: timestamp_ntz
       - name: dbt_valid_to
-        data_type: timestamp_ntz
       - name: dbt_updated_at
-        data_type: timestamp_ntz
       - name: is_current
-        data_type: boolean
       - name: is_superseded
-        data_type: boolean
-      - name: is_problematic
-        data_type: boolean

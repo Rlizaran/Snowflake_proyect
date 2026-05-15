@@ -1,0 +1,161 @@
+// Gold layer ERD (DB_CITYBIKE_GOLD). PKs + FKs + relaciones basicas.
+// Sufijo (table) / (view) indica la materializacion dbt de cada modelo.
+
+Project GoldLayer {
+  database_type: 'Snowflake'
+  Note: 'Capa Gold: dimensiones (CORE) + facts (MARTS) consumibles por Power BI.'
+}
+
+// ---------- CORE: dimensiones ----------
+
+Table "dim_fecha (view)" {
+  fecha_id date [pk]
+  anio number
+  trimestre number
+  mes number
+  nombre_mes varchar
+  anio_mes varchar
+  dia_mes number
+  dia_semana number
+  nombre_dia varchar
+  es_fin_semana boolean
+  semana_anio number
+  dia_anio number
+  estacion varchar
+}
+
+Table "dim_city (view)" {
+  city_id varchar [pk]
+  city varchar
+}
+
+Table "dim_user_type (view)" {
+  user_type_code varchar [pk]
+  member_casual varchar
+  description varchar
+  is_subscriber boolean
+}
+
+Table "dim_rideable_bike (view)" {
+  rideable_type_code varchar [pk]
+  rideable_type varchar
+  description varchar
+  is_electric boolean
+}
+
+Table "dim_station (view)" {
+  station_id varchar [pk]
+  canonical_name varchar
+  canonical_lat number
+  canonical_lng number
+}
+
+Table "dim_station_weather (view)" {
+  station_weather_id varchar [pk]
+  city_id varchar [ref: > "dim_city (view)".city_id]
+  station_name varchar
+  lat float
+  lng float
+  state varchar
+  elevation_m float
+}
+
+Table "dim_weather_element (view)" {
+  element_code varchar [pk]
+  description varchar
+  unit varchar
+}
+
+Table "dim_quality_flag (view)" {
+  q_flag varchar [pk]
+  q_flag_category varchar
+  description varchar
+}
+
+// ---------- MARTS: facts ----------
+
+Table "fct_trips (table)" {
+  ride_id varchar [pk]
+  trip_date date [ref: > "dim_fecha (view)".fecha_id]
+  city_id varchar [ref: > "dim_city (view)".city_id]
+  rideable_type_code varchar [ref: > "dim_rideable_bike (view)".rideable_type_code]
+  user_type_code varchar [ref: > "dim_user_type (view)".user_type_code]
+  start_station_id varchar [ref: > "dim_station (view)".station_id]
+  end_station_id varchar [ref: > "dim_station (view)".station_id]
+  trip_duration_min number
+  distance_in_km float
+}
+
+Table "fct_trips_daily (table)" {
+  daily_trip_id varchar [pk]
+  trip_date date [ref: > "dim_fecha (view)".fecha_id]
+  city_id varchar [ref: > "dim_city (view)".city_id]
+  rideable_type_code varchar [ref: > "dim_rideable_bike (view)".rideable_type_code]
+  user_type_code varchar [ref: > "dim_user_type (view)".user_type_code]
+  series_key varchar
+  n_trips number
+  avg_duration_min number
+  total_duration_min number
+  min_duration_min number
+  max_duration_min number
+  median_duration_min number
+  avg_distance_km number
+  total_distance_km float
+  min_distance_km float
+  max_distance_km float
+  median_distance_km number
+}
+
+Table "fct_trips_weather (table)" {
+  trip_weather_id varchar [pk]
+  trip_date date [ref: > "dim_fecha (view)".fecha_id]
+  city_id varchar [ref: > "dim_city (view)".city_id]
+  station_weather_id varchar [ref: > "dim_station_weather (view)".station_weather_id]
+  n_trips number
+  n_trips_member number
+  n_trips_casual number
+  n_trips_classic number
+  n_trips_electric number
+  avg_duration_min number
+  avg_distance_km number
+  temp_max_c number
+  temp_min_c number
+  temp_avg_c number
+  precipitation_mm number
+  snowfall_mm number
+  snow_depth_mm number
+  weather_category varchar
+}
+
+Table "fct_weather_daily (view)" {
+  daily_id varchar [pk]
+  station_weather_id varchar [ref: > "dim_station_weather (view)".station_weather_id]
+  observation_date date [ref: > "dim_fecha (view)".fecha_id]
+  city_id varchar
+  temp_max_c number
+  temp_min_c number
+  temp_avg_c number
+  precipitation_mm number
+  snowfall_mm number
+  snow_depth_mm number
+  weather_category varchar
+}
+
+Table "fct_noaa_corrections (view)" {
+  observation_version_id varchar [pk]
+  scd_key varchar
+  station_weather_id varchar [ref: > "dim_station_weather (view)".station_weather_id]
+  observation_date date [ref: > "dim_fecha (view)".fecha_id]
+  observation_year number
+  observation_quarter number
+  observation_month number
+  element_code varchar [ref: > "dim_weather_element (view)".element_code]
+  q_flag varchar [ref: > "dim_quality_flag (view)".q_flag]
+  data_value number
+  obs_time number
+  dbt_valid_from timestamp_ntz
+  dbt_valid_to timestamp_ntz
+  dbt_updated_at timestamp_ntz
+  is_current boolean
+  is_superseded boolean
+}

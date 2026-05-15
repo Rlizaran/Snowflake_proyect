@@ -1,4 +1,5 @@
 # Documentacion + tests sobre los snapshots SCD2.
+# Cambio v8: drop de m_flag y s_flag (ya no se exponen en el snapshot).
 
 version: 2
 
@@ -22,14 +23,12 @@ snapshots:
           - accepted_values:
               arguments: { values: ['TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5'] }
       - name: data_value
-      - name: m_flag
       - name: q_flag
       - name: q_flag_category
         data_tests:
           - not_null
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
-      - name: s_flag
       - name: obs_time
       - name: source_file
       - name: load_ts
