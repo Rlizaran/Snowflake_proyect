@@ -1,5 +1,5 @@
 -- slv_weather_observation: fact NOAA long format (un row por station, date, element).
-
+-- CTE obs: select sobre stg vigente del snapshot
 with obs as (
     select * from {{ ref('stg_NOAA__noaa_raw_year') }}
 )
@@ -12,11 +12,10 @@ select
     station_id,
     observation_date,
     element as element_code,
-
-    -- atributos
-    data_value,
     q_flag,
-    q_flag_category,
+
+    -- atributo
+    data_value,
 
     -- linaje
     source_file,

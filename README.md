@@ -4,7 +4,7 @@ Pipeline medallion (Bronze → Silver → Gold) sobre **Citi Bike NY + Jersey Ci
 
 ## Diagramas
 
-ERDs de Bronze, Silver Gold como DBML.
+ERDs de Bronze, Silver y Gold.
 
 - [`Snowflake_proyect/photos/Bronze.png`](Snowflake_proyect\photos\Bronze.png) 
 - [`Snowflake_proyect/photos/Silver.png`](Snowflake_proyect\photos\Silver.png) 
@@ -16,7 +16,8 @@ ERDs de Bronze, Silver Gold como DBML.
 | Silver | ver `Snowflake_proyect/photos/Silver.png` | ![Silver ERD](photos/Silver.png) |
 | Gold   | ver `Snowflake_proyect/photos/Gold.png`   | ![Gold ERD](photos/Gold.png)     |
 
-Las imágenes viven en `photos/`.
+
+Los `.dbml` se pegan tal cual en https://dbdiagram.io. El sufijo `(table)` o `(view)` del nombre indica la materializacion dbt — solo aparece en el diagrama.
 
 ## Stack
 
@@ -38,16 +39,17 @@ CITYBIKE.CITYBIKE_TRIPS_JC                     CITYBIKE.slv_trip          (table
    ↑ COPY stage interno (Python PUT)           CITYBIKE.slv_station       (view)           CORE.dim_station
                                                CITYBIKE.slv_city          (view)           CORE.dim_station_weather
 NOAA.NOAA_RAW_YEAR                             CITYBIKE.slv_rideable_type (view)           CORE.dim_weather_element
-   ↑ COPY S3 NOAA (by_year)                    CITYBIKE.slv_user_type     (view)
-                                                                                           MARTS.fct_trips           (view)
-                                               snapshots.snp_NOAA__noaa_raw_year (SCD2)    MARTS.fct_trips_daily     (incr.)
-                                                  ↑ check_cols=[data_value, q_flag_cat]    MARTS.fct_trips_weather   (incr.)
-                                                                                           MARTS.fct_weather_daily   (view)
-                                               intermediate.stg_NOAA__noaa_raw_year        MARTS.fct_noaa_corrections (view)
-                                                  ↑ view sobre version vigente del SCD2
+   ↑ COPY S3 NOAA (by_year)                    CITYBIKE.slv_user_type     (view)           CORE.dim_quality_flag
+
+                                               snapshots.snp_NOAA__noaa_raw_year (SCD2)    MARTS.fct_trips           (table, incr.)
+                                                  ↑ check_cols=[data_value, q_flag_cat]    MARTS.fct_trips_daily     (table, incr.)
+                                                                                           MARTS.fct_trips_weather   (table, incr.)
+                                               intermediate.stg_NOAA__noaa_raw_year        MARTS.fct_weather_daily   (view)
+                                                  ↑ view sobre version vigente del SCD2    MARTS.fct_noaa_corrections (view)
                                                NOAA.slv_weather_observation (view)
                                                NOAA.slv_weather_station    (view, 2 rows)
                                                NOAA.slv_weather_element    (view, 8 rows)
+                                               NOAA.slv_quality_flag       (view, lookup)
 ```
 
 ## Bronze
@@ -70,7 +72,9 @@ NOAA reescribe archivos del año cuando publica correcciones de `q_flag` o `data
 
 `scd_key` = `upper(trim(station_id)) || '|' || trim(observation_date) || '|' || upper(trim(element))`. Dedupe explícito en CTE intermedia (no qualify final) para que el primer run no inserte filas duplicadas.
 
-`fct_noaa_corrections` (gold) expone TODAS las versiones para BI: `is_current`, `is_superseded`, `is_problematic` (SUSPECT/INVALID), permite medir cuántas correcciones publicó NOAA por estación / mes / elemento.
+El snapshot guarda solo `q_flag` y `q_flag_category` (este ultimo necesario para SCD2 `check_cols`). `m_flag` y `s_flag` se eliminaron en v8 — no aportaban a la historia ni al consumo BI.
+
+`fct_noaa_corrections` (gold) expone TODAS las versiones para BI: `is_current`, `is_superseded`. La categoria del flag se resuelve via join con `dim_quality_flag` (lookup normalizado), no como columna inline.
 
 ## Silver
 
@@ -78,9 +82,11 @@ NOAA reescribe archivos del año cuando publica correcciones de `q_flag` o `data
 
 `stg_NOAA__noaa_raw_year` — view delgada sobre el snapshot, filtra `dbt_valid_to is null` (versión vigente).
 
-`slv_trip` — fact normalizado, materializado incremental MERGE por `ride_id` con ventana `load_ts > max(load_ts)`. FKs surrogate a las dims via `dbt_utils.generate_surrogate_key`.
+`slv_trip` — fact normalizado, materializado **table** (override sobre `+materialized: view` del project) por el coste del `ST_DISTANCE`. MERGE por `ride_id` con ventana `load_ts > max(load_ts)`. FKs surrogate a las dims via `dbt_utils.generate_surrogate_key`.
 
-`slv_weather_*` — dims hardcoded (estación + elementos) y fact long (`slv_weather_observation`).
+`slv_weather_*` — dims hardcoded (estación + elementos), lookup normalizado de q_flag (`slv_quality_flag`) y fact long (`slv_weather_observation`).
+
+`slv_quality_flag` — lookup nuevo (v8). Antes la categoria de `q_flag` vivia inline en el snapshot y se propagaba como columna duplicada. Ahora es una tabla independiente con (`q_flag`, `q_flag_category`, `description`). Cualquier modelo que necesite la categoria hace JOIN.
 
 ## Gold
 
@@ -95,18 +101,34 @@ NOAA reescribe archivos del año cuando publica correcciones de `q_flag` o `data
 | `dim_station` | passthrough `slv_station` | ~2000 estaciones Citi Bike |
 | `dim_station_weather` | passthrough `slv_weather_station` | 2 estaciones NOAA |
 | `dim_weather_element` | passthrough `slv_weather_element` | TMAX, TMIN, PRCP, SNOW, SNWD, AWND, WSF2, WSF5 |
+| `dim_quality_flag` | passthrough `slv_quality_flag` | Lookup q_flag NOAA → q_flag_category (nuevo en v8) |
 
 ### `marts/` (facts, schema `MARTS`)
 
 | Fact | Grano | Material. | Notas |
 |---|---|---|---|
-| `fct_trips` | 1 row/viaje | view | Passthrough de `slv_trip` + `duration_bucket` + `distance_in_km` (ST_DISTANCE con coords canónicas de start/end). |
+| `fct_trips` | 1 row/viaje | table, incremental MERGE | Passthrough de `slv_trip`. FKs a dims. |
 | `fct_trips_daily` | `trip_date × city × bike × user` | table, incremental MERGE | Métricas: `n_trips`, `avg/sum/min/max/median duration`. Incluye `series_key` listo para `ML.FORECAST`. |
 | `fct_trips_weather` | `trip_date × city` | table, incremental MERGE | Cruza trips agregados (`n_trips_member/casual/classic/electric`) con clima (`temp_max/min/avg_c`, `precipitation_mm`, `snow_mm`, `weather_category`). Mapeo Manhattan→`USW00094728`, JC→`USW00014734`. |
 | `fct_weather_daily` | `(station, observation_date)` | view | Pivot wide de elementos NOAA + `weather_category` (rainy/snowy/hot/cold/mild). |
-| `fct_noaa_corrections` | 1 row/versión SCD2 | view | Toda la historia del snapshot. `is_current`, `is_superseded`, `is_problematic`. |
+| `fct_noaa_corrections` | 1 row/versión SCD2 | view | Toda la historia del snapshot. `is_current`, `is_superseded`. La categoria de `q_flag` se resuelve via FK a `dim_quality_flag`. |
 
 Los aggregados (`fct_trips_daily`, `fct_trips_weather`) son `incremental` con ventana de 7 días sobre `trip_date` para absorber viajes que lleguen tarde. Para reprocesar correcciones NOAA en historia profunda: `dbt run --full-refresh --select fct_trips_weather`.
+
+## Constraints y contratos dbt
+
+**Regla del proyecto (v8):** las clausulas `constraints:` en yml viven **solo a nivel modelo en tablas materializadas**. Las views no llevan constraints (Snowflake solo enforce `NOT NULL` y siempre informativo en views).
+
+Modelos con `contract: { enforced: true }` + `constraints:` a nivel tabla:
+
+| Modelo | Capa | PK |
+|---|---|---|
+| `slv_trip` | Silver (table) | `ride_id` |
+| `fct_trips` | Gold MARTS (incremental → table) | `ride_id` |
+| `fct_trips_daily` | Gold MARTS (incremental → table) | `daily_trip_id` |
+| `fct_trips_weather` | Gold MARTS (incremental → table) | `trip_weather_id` |
+
+Las demas dims, lookups y facts-view (`fct_weather_daily`, `fct_noaa_corrections`) solo llevan `data_tests` (`unique`, `not_null`, `relationships`, `accepted_values`). Sin `constraints:`.
 
 ## Schema DEV/PRO
 
@@ -142,6 +164,7 @@ Todos los streams y tasks viven en `DB_CITYBIKE_LOGS.{LOGS|PRO}`.
 ```
 
 En **DEV** y **PRO** el cron está consolidado en `TSK_BRONZE_MASTER` (root único, los demás son `AFTER`).
+
 ## Jobs dbt recomendados (PRO)
 
 | Job | Comando | Schedule |
@@ -176,7 +199,7 @@ Si se necesita meter exógenas (temp, prcp) se pasa a un modelo Python en dbt (`
 ## Tests
 
 - **Sources** — minimos: solo `source_file` y `load_ts` `not_null` (catch fallo de COPY). `ride_id not_null` como warn. La basura del CSV se filtra en stg.
-- **Silver** — `unique`/`not_null` en PKs, `accepted_values` en categóricos, `relationships` entre FKs y dims.
+- **Silver** — `unique`/`not_null` en PKs, `accepted_values` en categóricos, `relationships` entre FKs y dims, incluyendo el nuevo FK `q_flag → slv_quality_flag`.
 - **Snapshot** — `unique(dbt_scd_id)`, `not_null(scd_key)`, `accepted_values(q_flag_category)`.
 - **Singulares** — `test_citybike_no_silent_drop` (todos los ride_id válidos en bronze llegan a silver), `test_citybike_partial_month_detection` (alerta meses cerrados con conteo bajo), `test_noaa_element_count_match` + `test_noaa_station_count_match` (conteos únicos bronze vs silver vía macro `bronze_silver_count_diff`).
 
@@ -184,7 +207,11 @@ Si se necesita meter exógenas (temp, prcp) se pasa a un modelo Python en dbt (`
 
 ```
 Snowflake_proyect/
-├── extract_jc_to_stage.py        # ingestor idempotente JC + NY (202604+) -> stages internos
+├──        
+│   ├── extract_jc_to_stage.py       # ingestor idempotente JC + NY (202604+) -> stages internos
+│   ├── generate_schema_name.sql          # DEV={target}_{custom}; PRO={custom}
+│   └── bronze_silver_count_diff.sql 
+│
 ├── dbt_project.yml               # config dbt (DBs por env, schemas por capa)
 ├── profiles.yml                  # perfil Snowflake (env vars)
 ├── packages.yml                  # dbt_utils, codegen, dbt_expectations, dbt_date
@@ -196,7 +223,7 @@ Snowflake_proyect/
 │   └── bronze_silver_count_diff.sql      # macro test bronze vs silver
 │
 ├── snapshots/
-│   ├── snp_NOAA__noaa_raw_year.sql       # SCD2 sobre NOAA
+│   ├── snp_NOAA__noaa_raw_year.sql       # SCD2 sobre NOAA (solo q_flag + q_flag_category)
 │   └── _snapshot.yml
 │
 ├── models/
@@ -209,7 +236,7 @@ Snowflake_proyect/
 │   │   └── silver/
 │   │       ├── CityBike/
 │   │       │   ├── _stg_CityBike__model.yml
-│   │       │   ├── slv_trip.sql                       # incremental MERGE
+│   │       │   ├── slv_trip.sql                       # table incremental MERGE
 │   │       │   ├── slv_station.sql
 │   │       │   ├── slv_city.sql
 │   │       │   ├── slv_rideable_type.sql
@@ -218,13 +245,12 @@ Snowflake_proyect/
 │   │           ├── _stg_NOAA__model.yml
 │   │           ├── slv_weather_observation.sql
 │   │           ├── slv_weather_station.sql
-│   │           └── slv_weather_element.sql
+│   │           ├── slv_weather_element.sql
+│   │           └── slv_quality_flag.sql               # NUEVO v8: lookup q_flag
 │   └── marts/
 │       ├── _marts__model.yml
-│       ├── fct_trips.sql                              # view
 │       ├── fct_trips_daily.sql                        # table incr.
 │       ├── fct_trips_weather.sql                      # table incr.
-│       ├── fct_weather_daily.sql                      # view
 │       ├── fct_noaa_corrections.sql                   # view
 │       └── core/
 │           ├── _core__model.yml
@@ -234,7 +260,10 @@ Snowflake_proyect/
 │           ├── dim_rideable_bike.sql
 │           ├── dim_station.sql
 │           ├── dim_station_weather.sql
-│           └── dim_weather_element.sql
+│           ├── dim_weather_element.sql
+│           ├── dim_quality_flag.sql                   # NUEVO v8: passthrough slv_quality_flag
+│           ├── fct_trips.sql                          # table incr.
+│           └── fct_weather_daily.sql                  # view
 │
 ├── tests/
 │   └── singular/
@@ -307,5 +336,12 @@ Orden SQL Snowflake (una sola vez por entorno):
 ### Notas operativas
 
 - Encadenar `dbt docs generate` al **success** del build (no como job separado). Si falla el build, no generas docs de un estado roto.
-- En **dbt Cloud**: los 3 jobs apuntan al mismo deployment environment (`PRO`), diferentes comandos + cron
+- En **dbt Cloud**: los 3 jobs apuntan al mismo deployment environment (`PRO`), diferentes comandos + cron.
 - En **GitHub Actions / cron externo**: 3 workflows separados con la misma imagen dbt y env vars (`DBT_ENVIRONMENTS=PRO`, `SF_*`).
+
+## Changelog v8
+
+- **NOAA flags** — drop de `m_flag` y `s_flag` en snapshot, stg, silver y gold. `q_flag` se conserva (input del SCD2 y FK al lookup normalizado).
+- **Normalizacion q_flag** — nuevo `slv_quality_flag` (silver) + `dim_quality_flag` (gold). La columna `q_flag_category` desaparece de los modelos downstream; se resuelve via JOIN.
+- **Constraints solo en tablas** — yml refactorizado: bloque `constraints:` solo en `slv_trip`, `fct_trips`, `fct_trips_daily`, `fct_trips_weather`. Las views (dims, fct_weather_daily, fct_noaa_corrections) no llevan constraints — solo `data_tests`.
+- **DBML** — `sql/silver.dbml` y `sql/gold.dbml` listos para dbdiagram.io. PK/FK basicos. Nombre de tabla incluye `(table)` o `(view)` segun materializacion.

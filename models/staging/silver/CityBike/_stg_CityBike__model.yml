@@ -35,48 +35,74 @@ models:
 
   - name: slv_trip
     description: 'Fact normalizado: un row por viaje (NY+JC), con FKs explicitas. distance_in_km NULLeado para round-trips y outliers > 500.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [ride_id]
+      - type: not_null
+        columns: [ride_id, trip_date]
     columns:
       - name: ride_id
+        data_type: varchar
         data_tests:
-          - unique:  { config: { severity: error } }
+          - unique: { config: { severity: error } }
           - not_null
       - name: trip_date
+        data_type: date
         data_tests:
           - not_null
           - relationships:
               arguments:
                 to: ref('dim_fecha')
                 field: fecha_id
+      - name: started_at
+        data_type: timestamp_ntz
+      - name: ended_at
+        data_type: timestamp_ntz
+      - name: trip_duration_min
+        data_type: "number(10, 2)"
+      - name: distance_in_km
+        data_type: float
       - name: rideable_type_code
+        data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_rideable_type')
                 field: rideable_type_code
       - name: user_type_code
+        data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_user_type')
                 field: user_type_code
       - name: start_station_id
+        data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_station')
                 field: station_id
       - name: end_station_id
+        data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_station')
                 field: station_id
       - name: city_id
+        data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('slv_city')
                 field: city_id
+      - name: source_file
+        data_type: varchar
+      - name: load_ts
+        data_type: timestamp_ntz
 
   - name: slv_city
     description: 'Lookup de ciudades CityBike (Manhattan, Jersey City).'

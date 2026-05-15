@@ -15,9 +15,10 @@
     )
 }}
 
+-- CTE raw_src: cast + escalado a unidad real + categorizacion de q_flag
 with raw_src as (
     select
-        -- PK
+        -- PK SCD2 (station + date + element)
         upper(trim(station_id)) || '|' || trim(observation_date) || '|' || upper(trim(element)) as scd_key,
 
         -- atributos
@@ -29,9 +30,11 @@ with raw_src as (
                 then round(try_to_decimal(data_value, 18, 2) / 10, 2)
             else try_to_decimal(data_value, 18, 2)
         end::decimal(18,2)                                                                       as data_value,
-        trim(m_flag)                                                                             as m_flag,
+
+        -- q_flag se conserva: dimension normalizada slv_quality_flag lo usa como PK
         trim(q_flag)                                                                             as q_flag,
-        trim(s_flag)                                                                             as s_flag,
+
+        -- q_flag_category vive aqui porque la SCD2 strategy 'check' lo necesita
         case
             when coalesce(trim(q_flag), '') in ('Z','G', '') then 'OK'
             when trim(q_flag) = 'S'                          then 'SUSPECT'
@@ -51,6 +54,7 @@ with raw_src as (
       and upper(trim(element)) in ('TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5')
 ),
 
+-- CTE deduped: colapsa duplicados intra-batch antes del MERGE del snapshot
 deduped as (
     select *
     from raw_src

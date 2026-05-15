@@ -1,0 +1,129 @@
+// Silver layer ERD (DB_CITYBIKE_SILVER). PKs + FKs + relaciones basicas.
+// Sufijo (table) / (view) indica la materializacion dbt de cada modelo.
+
+Project SilverLayer {
+  database_type: 'Snowflake'
+  Note: 'Capa Silver: stg + dimensiones normalizadas + facts limpios.'
+}
+
+// ---------- CityBike ----------
+
+Table "stg_CityBike__citybike_trips (view)" {
+  ride_id varchar [pk]
+  city varchar
+  rideable_type varchar
+  member_casual varchar
+  started_at timestamp_ntz
+  ended_at timestamp_ntz
+  trip_duration_min number
+  dist_km float
+  start_station_id varchar
+  end_station_id varchar
+  source_file varchar
+  load_ts timestamp_ntz
+}
+
+Table "slv_trip (table)" {
+  ride_id varchar [pk]
+  trip_date date
+  started_at timestamp_ntz
+  ended_at timestamp_ntz
+  trip_duration_min number
+  trip_distance_km float
+  rideable_type_code varchar [ref: > "slv_rideable_type (view)".rideable_type_code]
+  user_type_code varchar [ref: > "slv_user_type (view)".user_type_code]
+  start_station_id varchar [ref: > "slv_station (view)".station_id]
+  end_station_id varchar [ref: > "slv_station (view)".station_id]
+  city_id varchar [ref: > "slv_city (view)".city_id]
+  source_file varchar
+  load_ts timestamp_ntz
+}
+
+Table "slv_city (view)" {
+  city_id varchar [pk]
+  city varchar
+}
+
+Table "slv_rideable_type (view)" {
+  rideable_type_code varchar [pk]
+  rideable_type varchar
+  description varchar
+  is_electric boolean
+}
+
+Table "slv_user_type (view)" {
+  user_type_code varchar [pk]
+  member_casual varchar
+  description varchar
+  is_subscriber boolean
+}
+
+Table "slv_station (view)" {
+  station_id varchar [pk]
+  canonical_name varchar
+  canonical_lat number
+  canonical_lng number
+}
+
+// ---------- NOAA ----------
+
+Table "snp_NOAA__noaa_raw_year (table)" {
+  scd_key varchar [pk]
+  station_id varchar
+  observation_date date
+  element varchar
+  data_value number
+  q_flag varchar
+  q_flag_category varchar
+  obs_time number
+  dbt_valid_from timestamp_ntz
+  dbt_valid_to timestamp_ntz
+  Note: 'SCD2 strategy check sobre [data_value, q_flag_category].'
+}
+
+Table "stg_NOAA__noaa_raw_year (view)" {
+  station_id varchar
+  observation_date date
+  element varchar
+  data_value number
+  q_flag varchar [ref: > "slv_quality_flag (view)".q_flag]
+  obs_time number
+  source_file varchar
+  load_ts timestamp_ntz
+  dbt_valid_from timestamp_ntz
+  Note: 'Vista vigente del snapshot (dbt_valid_to is null).'
+}
+
+Table "slv_weather_observation (view)" {
+  observation_id varchar [pk]
+  station_id varchar [ref: > "slv_weather_station (view)".station_weather_id]
+  observation_date date
+  element_code varchar [ref: > "slv_weather_element (view)".element_code]
+  q_flag varchar [ref: > "slv_quality_flag (view)".q_flag]
+  data_value number
+  source_file varchar
+  load_ts timestamp_ntz
+}
+
+Table "slv_weather_station (view)" {
+  station_weather_id varchar [pk]
+  city_id varchar [ref: > "slv_city (view)".city_id]
+  station_name varchar
+  lat float
+  lng float
+  state varchar
+  elevation_m float
+}
+
+Table "slv_weather_element (view)" {
+  element_code varchar [pk]
+  description varchar
+  unit varchar
+}
+
+Table "slv_quality_flag (view)" {
+  q_flag varchar [pk]
+  q_flag_category varchar
+  description varchar
+  Note: 'Lookup normalizado de q_flag NOAA -> categoria.'
+}
