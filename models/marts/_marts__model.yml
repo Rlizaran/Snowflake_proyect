@@ -136,9 +136,6 @@ models:
         data_tests:
           - not_null
       - name: observation_date
-      - name: observation_year
-      - name: observation_quarter
-      - name: observation_month
       - name: element_code
         data_tests:
           - relationships:
