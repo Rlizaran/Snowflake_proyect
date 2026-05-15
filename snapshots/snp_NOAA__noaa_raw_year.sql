@@ -1,6 +1,4 @@
 -- Snapshot SCD2 sobre noaa_raw_year. Strategy 'check' sobre [data_value, q_flag_category].
--- Cambio v8: drop de m_flag y s_flag (no aportan a la historia ni a BI; q_flag se mantiene
--- porque es la fuente del q_flag_category y la base del slv_quality_flag normalizado).
 
 {% snapshot snp_NOAA__noaa_raw_year %}
 

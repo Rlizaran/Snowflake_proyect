@@ -1,6 +1,4 @@
 -- slv_quality_flag: lookup normalizado del q_flag NOAA y su q_flag_category.
--- Antes vivia inline en snp_NOAA. Ahora es una tabla independiente para que slv_weather_observation
--- y fct_noaa_corrections expongan solo q_flag y BI haga el join.
 
 select
     -- PK

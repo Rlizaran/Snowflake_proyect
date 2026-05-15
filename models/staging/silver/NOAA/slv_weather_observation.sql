@@ -1,6 +1,4 @@
 -- slv_weather_observation: fact NOAA long format (un row por station, date, element).
--- Cambio v8: drop de q_flag_category. q_flag se mantiene como FK a slv_quality_flag (lookup normalizado).
-
 -- CTE obs: select sobre stg vigente del snapshot
 with obs as (
     select * from {{ ref('stg_NOAA__noaa_raw_year') }}

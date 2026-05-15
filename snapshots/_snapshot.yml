@@ -1,5 +1,4 @@
 # Documentacion + tests sobre los snapshots SCD2.
-# Cambio v8: drop de m_flag y s_flag (ya no se exponen en el snapshot).
 
 version: 2
 

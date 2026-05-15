@@ -1,5 +1,4 @@
 # Silver CityBike: stg incremental + dimensiones normalizadas + fact slv_trip.
-# Cambio v8: constraints solo a nivel tabla (slv_trip). Las views no llevan constraints.
 
 version: 2
 
