@@ -6,11 +6,16 @@ Pipeline medallion (Bronze → Silver → Gold) sobre **Citi Bike NY + Jersey Ci
 
 ERDs de Bronze, Silver y Gold.
 
-| Capa   | PNG                                       | DBML                              |
-|--------|-------------------------------------------|-----------------------------------|
-| Bronze | `Snowflake_proyect/photos/Bronze.png`     | —                                 |
-| Silver | `Snowflake_proyect/photos/Silver.png`     | `sql/silver.dbml`                 |
-| Gold   | `Snowflake_proyect/photos/Gold.png`       | `sql/gold.dbml`                   |
+- [`Snowflake_proyect/photos/Bronze.png`](Snowflake_proyect\photos\Bronze.png) 
+- [`Snowflake_proyect/photos/Silver.png`](Snowflake_proyect\photos\Silver.png) 
+- [`Snowflake_proyect/photos/Gold.png`](Snowflake_proyect\photos\Gold.png)
+
+| Capa   |                Diagrama                   |              Capturas            |
+|--------|-------------------------------------------|----------------------------------|
+| Bronze | ver `Snowflake_proyect/photos/Bronze.png` | ![Bronze ERD](photos/Bronze.png) |
+| Silver | ver `Snowflake_proyect/photos/Silver.png` | ![Silver ERD](photos/Silver.png) |
+| Gold   | ver `Snowflake_proyect/photos/Gold.png`   | ![Gold ERD](photos/Gold.png)     |
+
 
 Los `.dbml` se pegan tal cual en https://dbdiagram.io. El sufijo `(table)` o `(view)` del nombre indica la materializacion dbt — solo aparece en el diagrama.
 
@@ -202,7 +207,11 @@ Si se necesita meter exógenas (temp, prcp) se pasa a un modelo Python en dbt (`
 
 ```
 Snowflake_proyect/
-├── extract_jc_to_stage.py        # ingestor idempotente JC + NY (202604+) -> stages internos
+├──        
+│   ├── extract_jc_to_stage.py       # ingestor idempotente JC + NY (202604+) -> stages internos
+│   ├── generate_schema_name.sql          # DEV={target}_{custom}; PRO={custom}
+│   └── bronze_silver_count_diff.sql 
+│
 ├── dbt_project.yml               # config dbt (DBs por env, schemas por capa)
 ├── profiles.yml                  # perfil Snowflake (env vars)
 ├── packages.yml                  # dbt_utils, codegen, dbt_expectations, dbt_date
