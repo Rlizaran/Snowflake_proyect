@@ -14,9 +14,6 @@ select
     scd_key,
     station_id                as station_weather_id,
     observation_date,
-    year(observation_date)    as observation_year,
-    quarter(observation_date) as observation_quarter,
-    month(observation_date)   as observation_month,
     element                   as element_code,
     q_flag,
 
