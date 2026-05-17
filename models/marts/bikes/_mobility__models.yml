@@ -1,0 +1,139 @@
+# Capa Gold marts/bikes: facts pre-calculados con contract enforced y constraints a nivel tabla.
+
+version: 2
+
+models:
+  - name: fct_trips_daily
+    description: 'Fact agregado (trip_date x city x bike x user). Input para PBI y ML.FORECAST.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [daily_trip_id]
+      - type: not_null
+        columns: [daily_trip_id]
+    columns:
+      - name: daily_trip_id
+        data_type: varchar
+        data_tests:
+          - unique
+      - name: trip_date
+        data_type: date
+      - name: city_id
+        data_type: varchar
+      - name: rideable_type_code
+        data_type: varchar
+      - name: user_type_code
+        data_type: varchar
+      - name: series_key
+        data_type: varchar
+      - name: n_trips
+        data_type: "number(38, 0)"
+      - name: avg_duration_min
+        data_type: "number(38, 2)"
+      - name: total_duration_min
+        data_type: "number(38, 2)"
+      - name: min_duration_min
+        data_type: "number(38, 2)"
+      - name: max_duration_min
+        data_type: "number(38, 2)"
+      - name: median_duration_min
+        data_type: "number(38, 2)"
+      - name: avg_distance_km
+        data_type: "number(38, 2)"
+      - name: total_distance_km
+        data_type: float
+      - name: min_distance_km
+        data_type: float
+      - name: max_distance_km
+        data_type: float
+      - name: median_distance_km
+        data_type: "number(38, 2)"
+
+  - name: fct_trips
+    description: 'Fact gold por viaje: 1 row por ride. Passthrough de slv_trip con FKs a dims.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [ride_id]
+      - type: not_null
+        columns: [ride_id, trip_date]
+    columns:
+      - name: ride_id
+        data_type: varchar
+      - name: trip_date
+        data_type: date
+      - name: city_id
+        data_type: varchar
+      - name: rideable_type_code
+        data_type: varchar
+      - name: user_type_code
+        data_type: varchar
+      - name: start_station_id
+        data_type: varchar
+      - name: end_station_id
+        data_type: varchar
+      - name: trip_duration_min
+        data_type: "number(8, 2)"
+      - name: distance_in_km
+        data_type: float
+
+  - name: dim_user_type
+    description: 'Tipos de usuario CityBike. Passthrough de slv_user_type.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [user_type_code]
+      - type: not_null
+        columns: [user_type_code]
+    columns:
+      - name: user_type_code
+        data_type: varchar
+      - name: member_casual
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: is_subscriber
+        data_type: boolean
+
+  - name: dim_rideable_bike
+    description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [rideable_type_code]
+      - type: not_null
+        columns: [rideable_type_code]
+    columns:
+      - name: rideable_type_code
+        data_type: varchar
+      - name: rideable_type
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: is_electric
+        data_type: boolean
+
+  - name: dim_station
+    description: 'Estaciones CityBike. Passthrough de slv_station.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [station_id]
+      - type: not_null
+        columns: [station_id]
+    columns:
+      - name: station_id
+        data_type: varchar
+      - name: canonical_name
+        data_type: varchar
+      - name: canonical_lat
+        data_type: "number(10, 4)"
+        description: 'Latitud redondeada de la estacion.'
+      - name: canonical_lng
+        data_type: "number(10, 4)"
+        description: 'Longitud redondeada de la estacion.'

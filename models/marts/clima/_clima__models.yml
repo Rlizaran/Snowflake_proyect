@@ -1,0 +1,147 @@
+# Capa Gold core: dims + fct_trips + fct_weather_daily. Contract enforced y constraints a nivel tabla.
+
+version: 2
+
+models:
+
+  - name: fct_weather_daily
+    description: 'Fact diario de clima por estacion (pivot wide). PK surrogate y weather_category establecidos aqui.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [daily_id]
+      - type: not_null
+        columns: [daily_id]
+    columns:
+      - name: daily_id
+        data_type: varchar
+        data_tests:
+          - unique
+      - name: station_weather_id
+        data_type: varchar
+      - name: observation_date
+        data_type: date
+      - name: city_id
+        data_type: varchar
+      - name: temp_max_c
+        data_type: "number(5, 2)"
+      - name: temp_min_c
+        data_type: "number(5, 2)"
+      - name: temp_avg_c
+        data_type: "number(5, 2)"
+      - name: precipitation_mm
+        data_type: "number(8, 2)"
+      - name: snowfall_mm
+        data_type: "number(8, 2)"
+      - name: snow_depth_mm
+        data_type: "number(8, 2)"
+      - name: weather_category
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+
+  - name: dim_station_weather
+    description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [station_weather_id]
+      - type: not_null
+        columns: [station_weather_id]
+    columns:
+      - name: station_weather_id
+        data_type: varchar
+      - name: city_id
+        data_type: varchar
+      - name: station_name
+        data_type: varchar
+      - name: lat
+        data_type: float
+      - name: lng
+        data_type: float
+      - name: state
+        data_type: varchar
+      - name: elevation_m
+        data_type: float
+
+  - name: dim_weather_element
+    description: 'Elementos meteo NOAA GHCN-Daily. Passthrough de slv_weather_element.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [element_code]
+      - type: not_null
+        columns: [element_code]
+    columns:
+      - name: element_code
+        data_type: varchar
+      - name: description
+        data_type: varchar
+      - name: unit
+        data_type: varchar
+
+  - name: dim_quality_flag
+    description: 'Lookup q_flag NOAA + q_flag_category. Passthrough de slv_quality_flag.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [q_flag]
+      - type: not_null
+        columns: [q_flag]
+    columns:
+      - name: q_flag
+        data_type: varchar
+      - name: q_flag_category
+        data_type: varchar
+      - name: description
+        data_type: varchar
+
+  - name: fct_noaa_corrections
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). PK surrogate generado aqui.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [observation_version_id]
+      - type: not_null
+        columns: [observation_version_id, scd_key, station_weather_id]
+    columns:
+      - name: observation_version_id
+        data_type: varchar
+        data_tests:
+          - unique
+      - name: scd_key
+        data_type: varchar
+      - name: station_weather_id
+        data_type: varchar
+      - name: observation_date
+        data_type: date
+      - name: observation_year
+        data_type: "number(4, 0)"
+      - name: observation_quarter
+        data_type: "number(1, 0)"
+      - name: observation_month
+        data_type: "number(2, 0)"
+      - name: element_code
+        data_type: varchar
+      - name: q_flag
+        data_type: varchar
+      - name: data_value
+        data_type: "number(18, 2)"
+      - name: obs_time
+        data_type: "number(38, 0)"
+      - name: dbt_valid_from
+        data_type: timestamp_ntz
+      - name: dbt_valid_to
+        data_type: timestamp_ntz
+      - name: dbt_updated_at
+        data_type: timestamp_ntz
+      - name: is_current
+        data_type: boolean
+      - name: is_superseded
+        data_type: boolean
