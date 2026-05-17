@@ -5,7 +5,7 @@
     materialized='incremental',
     unique_key='ride_id',
     incremental_strategy='merge',
-    on_schema_change='append_new_columns',
+    on_schema_change='fail',
     cluster_by=['year(trip_date)']
 ) }}
 
