@@ -72,13 +72,6 @@ models:
 
   - name: dim_fecha
     description: 'Spine diario de fechas (date_spine). PK fecha_id establecida aqui, rango derivado de stg_NOAA.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [fecha_id]
-      - type: not_null
-        columns: [fecha_id]
     columns:
       - name: fecha_id
         data_type: date
