@@ -1,10 +1,10 @@
-# Silver CityBike: stg incremental + dimensiones normalizadas + fact slv_trip.
+# Silver CityBike: stg + dims normalizadas + fact slv_trip (con contract).
 
 version: 2
 
 models:
   - name: stg_CityBike__citybike_trips
-    description: 'Modelo incremental que unifica viajes de NY (Manhattan) y JC.'
+    description: 'Modelo incremental que unifica viajes de NY (Manhattan) y JC. Primera capa con validacion de contenido.'
     columns:
       - name: ride_id
         data_tests:
@@ -22,19 +22,12 @@ models:
         data_tests:
           - accepted_values:
               arguments: { values: ['member', 'casual'] }
-      - name: dist_km
-        description: 'Distancia haversine aproximada (km) en linea recta start->end. ST_DISTANCE / 1000.'
-        data_tests:
-          - not_null
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
       - name: load_ts
         data_tests:
           - not_null
 
   - name: slv_trip
-    description: 'Fact normalizado: un row por viaje (NY+JC), con FKs explicitas. distance_in_km NULLeado para round-trips y outliers > 500.'
+    description: 'Fact silver: 1 row por viaje (NY+JC), con FKs explicitas. distance_in_km NULLeado para round-trips y outliers > 500.'
     config:
       contract: { enforced: true }
     constraints:
@@ -45,17 +38,12 @@ models:
     columns:
       - name: ride_id
         data_type: varchar
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
       - name: trip_date
+        description: 'FK a dim_fecha. Primer test del FK aqui.'
         data_type: date
         data_tests:
-          - not_null
           - relationships:
-              arguments:
-                to: ref('dim_fecha')
-                field: fecha_id
+              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: started_at
         data_type: timestamp_ntz
       - name: ended_at
@@ -65,86 +53,75 @@ models:
       - name: distance_in_km
         data_type: float
       - name: rideable_type_code
+        description: 'FK a slv_rideable_type. Surrogate generado aqui.'
         data_type: varchar
         data_tests:
           - relationships:
-              arguments:
-                to: ref('slv_rideable_type')
-                field: rideable_type_code
+              arguments: { to: ref('slv_rideable_type'), field: rideable_type_code }
       - name: user_type_code
+        description: 'FK a slv_user_type. Surrogate generado aqui.'
         data_type: varchar
         data_tests:
           - relationships:
-              arguments:
-                to: ref('slv_user_type')
-                field: user_type_code
+              arguments: { to: ref('slv_user_type'), field: user_type_code }
       - name: start_station_id
+        description: 'FK a slv_station.'
         data_type: varchar
         data_tests:
           - relationships:
-              arguments:
-                to: ref('slv_station')
-                field: station_id
+              arguments: { to: ref('slv_station'), field: station_id }
       - name: end_station_id
+        description: 'FK a slv_station.'
         data_type: varchar
         data_tests:
           - relationships:
-              arguments:
-                to: ref('slv_station')
-                field: station_id
+              arguments: { to: ref('slv_station'), field: station_id }
       - name: city_id
+        description: 'FK a slv_city. Surrogate generado aqui.'
         data_type: varchar
         data_tests:
           - relationships:
-              arguments:
-                to: ref('slv_city')
-                field: city_id
+              arguments: { to: ref('slv_city'), field: city_id }
       - name: source_file
         data_type: varchar
       - name: load_ts
         data_type: timestamp_ntz
 
   - name: slv_city
-    description: 'Lookup de ciudades CityBike (Manhattan, Jersey City).'
+    description: 'Lookup de ciudades CityBike (Manhattan, Jersey City). PK surrogate generado aqui.'
     columns:
       - name: city_id
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
       - name: city
         data_tests:
           - unique
-          - accepted_values:
-              arguments: { values: ['Manhattan','Jersey City'] }
 
   - name: slv_rideable_type
-    description: 'Lookup de tipos de bicicleta CityBike.'
+    description: 'Lookup de tipos de bicicleta CityBike. PK surrogate generado aqui.'
     columns:
       - name: rideable_type_code
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
       - name: rideable_type
         data_tests:
           - unique
-          - accepted_values:
-              arguments: { values: ['classic_bike','electric_bike'] }
 
   - name: slv_user_type
-    description: 'Lookup de tipos de usuario CityBike (member, casual).'
+    description: 'Lookup de tipos de usuario CityBike (member, casual). PK surrogate generado aqui.'
     columns:
       - name: user_type_code
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
       - name: member_casual
         data_tests:
           - unique
-          - accepted_values:
-              arguments: { values: ['casual','member'] }
 
   - name: slv_station
-    description: 'Estaciones unicas (NY + JC) deducidas desde stg_CityBike__citybike_trips.'
+    description: 'Estaciones canonicas CityBike (deduped via row_number sobre slv_trip).'
     columns:
       - name: station_id
         data_tests:

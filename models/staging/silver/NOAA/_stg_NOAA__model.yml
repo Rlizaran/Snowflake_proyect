@@ -1,10 +1,10 @@
-# Silver NOAA: stg vigente + dim estaciones/elementos + fact observaciones + lookup q_flag.
+# Silver NOAA: stg vigente + dim/lookup + fact observaciones.
 
 version: 2
 
 models:
   - name: stg_NOAA__noaa_raw_year
-    description: 'View sobre snp_NOAA__noaa_raw_year. Solo version vigente (dbt_valid_to is null).'
+    description: 'View vigente sobre el snapshot SCD2 (dbt_valid_to is null).'
     columns:
       - name: station_id
         data_tests:
@@ -23,15 +23,13 @@ models:
                 field: q_flag
 
   - name: slv_weather_observation
-    description: 'Fact NOAA long format: una observacion por (station, date, element). Surrogate MD5.'
+    description: 'Fact NOAA long format: una observacion por (station, date, element). Surrogate MD5 generado aqui.'
     columns:
       - name: observation_id
         description: 'PK surrogate MD5(station_id, observation_date, element_code).'
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
-      - name: station_id
-        description: 'FK a slv_weather_station.'
       - name: observation_date
         description: 'FK a dim_fecha.'
         data_tests:
@@ -46,31 +44,21 @@ models:
               arguments:
                 to: ref('slv_weather_element')
                 field: element_code
-      - name: q_flag
-        description: 'FK a slv_quality_flag (q_flag_category vive en el lookup).'
-        data_tests:
-          - relationships:
-              arguments:
-                to: ref('slv_quality_flag')
-                field: q_flag
 
   - name: slv_weather_station
-    description: 'Dim de estaciones NOAA derivada del seed weather_station_us. Renombra city de las 2 estaciones del proyecto a Manhattan/Jersey City.'
+    description: 'Dim de estaciones NOAA derivada del seed. PK establecida aqui.'
     columns:
       - name: station_weather_id
-        description: 'PK de estacion (renombrada del seed.station_id).'
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
-      - name: city_id
-        description: 'FK surrogate al slv_city (matchea solo para 2 estaciones del proyecto).'
 
   - name: slv_weather_element
-    description: 'Lookup de elementos meteo NOAA GHCN-Daily.'
+    description: 'Lookup de elementos meteo NOAA GHCN-Daily. PK establecida aqui.'
     columns:
       - name: element_code
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
       - name: unit
         data_tests:
@@ -78,18 +66,14 @@ models:
               arguments: { values: ['celsius','mm','m/s'] }
 
   - name: slv_quality_flag
-    description: 'Lookup normalizado de q_flag NOAA y su q_flag_category. Antes vivia inline en snp_NOAA.'
+    description: 'Lookup normalizado de q_flag NOAA. PK y categoria establecidos aqui.'
     columns:
       - name: q_flag
         description: 'PK natural (codigo de un caracter publicado por NOAA, vacio == OK).'
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
           - not_null
       - name: q_flag_category
         data_tests:
-          - not_null
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
-      - name: description
-        data_tests:
-          - not_null

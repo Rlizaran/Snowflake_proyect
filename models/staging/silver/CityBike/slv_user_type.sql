@@ -1,4 +1,7 @@
 -- slv_user_type: lookup de tipos de usuario CityBike (member, casual).
+-- Materializado table: el select distinct sobre slv_trip recompone full scan en cada query.
+
+{{ config(materialized='table') }}
 
 with distinct_types as (
     select distinct member_casual

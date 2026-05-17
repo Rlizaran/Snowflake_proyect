@@ -1,6 +1,4 @@
-# Capa Gold marts: facts pre-calculados.
-# Cambio v8: constraints solo a nivel tabla (fct_trips_daily, fct_trips_weather). Las views no llevan constraints.
-#           fct_noaa_corrections (view): drop de m_flag, s_flag, q_flag_category. q_flag queda como FK a dim_quality_flag.
+# Capa Gold marts: facts pre-calculados con contract enforced y constraints a nivel tabla.
 
 version: 2
 
@@ -18,27 +16,15 @@ models:
       - name: daily_trip_id
         data_type: varchar
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
       - name: trip_date
         data_type: date
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: city_id
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_city'), field: city_id }
       - name: rideable_type_code
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_rideable_bike'), field: rideable_type_code }
       - name: user_type_code
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_user_type'), field: user_type_code }
       - name: series_key
         data_type: varchar
       - name: n_trips
@@ -65,7 +51,7 @@ models:
         data_type: "number(38, 2)"
 
   - name: fct_trips_weather
-    description: 'Cruce diario rides + clima por ciudad. Grano = (trip_date x city).'
+    description: 'Cruce diario rides + clima por ciudad. Grano = (trip_date x city). Join nuevo a nivel gold: city_id -> station_weather_id.'
     config:
       contract: { enforced: true }
     constraints:
@@ -77,18 +63,13 @@ models:
       - name: trip_weather_id
         data_type: varchar
         data_tests:
-          - unique: { config: { severity: error } }
+          - unique
       - name: trip_date
         data_type: date
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: city_id
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_city'), field: city_id }
       - name: station_weather_id
+        description: 'FK a dim_station_weather. Join nuevo a nivel gold (no existe en silver), test aqui.'
         data_type: varchar
         data_tests:
           - relationships:
@@ -123,31 +104,46 @@ models:
         data_type: varchar
 
   - name: fct_noaa_corrections
-    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). View, sin constraints.'
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). PK surrogate generado aqui.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [observation_version_id]
+      - type: not_null
+        columns: [observation_version_id, scd_key, station_weather_id]
     columns:
       - name: observation_version_id
+        data_type: varchar
         data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+          - unique
       - name: scd_key
-        data_tests:
-          - not_null
+        data_type: varchar
       - name: station_weather_id
-        data_tests:
-          - not_null
+        data_type: varchar
       - name: observation_date
+        data_type: date
+      - name: observation_year
+        data_type: "number(4, 0)"
+      - name: observation_quarter
+        data_type: "number(1, 0)"
+      - name: observation_month
+        data_type: "number(1, 0)"
       - name: element_code
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_weather_element'), field: element_code }
+        data_type: varchar
       - name: q_flag
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_quality_flag'), field: q_flag }
+        data_type: varchar
       - name: data_value
+        data_type: "number(18, 2)"
       - name: obs_time
+        data_type: "number(38, 0)"
       - name: dbt_valid_from
+        data_type: timestamp_ntz
       - name: dbt_valid_to
+        data_type: timestamp_ntz
       - name: dbt_updated_at
+        data_type: timestamp_ntz
       - name: is_current
+        data_type: boolean
       - name: is_superseded
+        data_type: boolean

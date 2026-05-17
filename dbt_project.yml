@@ -59,7 +59,7 @@ models:
           +schema: NOAA
 
     marts:
-      +materialized: view
+      +materialized: table
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
       +schema: MARTS
       core:

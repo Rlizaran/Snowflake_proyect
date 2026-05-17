@@ -1,14 +1,30 @@
 -- Gold fact: clima diario por estacion (pivot wide de elementos + categorizacion).
+-- Incremental MERGE con ventana de 7 dias sobre observation_date (mismo patron que fct_trips_weather).
+
+{{ config(
+    materialized='incremental',
+    unique_key='daily_id',
+    incremental_strategy='merge',
+    on_schema_change='append_new_columns'
+) }}
 
 with
+-- CTE obs: filtra ventana incremental sobre slv_weather_observation
 obs as (
     select * from {{ ref('slv_weather_observation') }}
+    {% if is_incremental() %}
+        where observation_date >= (
+            select coalesce(dateadd(day, -7, max(observation_date)), '1900-01-01'::date)
+            from {{ this }}
+        )
+    {% endif %}
 ),
 
 stations as (
     select * from {{ ref('dim_station_weather') }}
 ),
 
+-- CTE pivoted: pivot wide de elementos NOAA por (station, fecha)
 pivoted as (
     select
         o.station_id as station_weather_id,

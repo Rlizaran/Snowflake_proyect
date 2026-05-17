@@ -1,4 +1,7 @@
 -- slv_rideable_type: lookup de tipos de bicicleta CityBike (classic, electric).
+-- Materializado table: el select distinct sobre slv_trip recompone full scan en cada query.
+
+{{ config(materialized='table') }}
 
 with distinct_types as (
     select distinct rideable_type

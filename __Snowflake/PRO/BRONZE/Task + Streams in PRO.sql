@@ -115,11 +115,47 @@ CREATE OR REPLACE TASK TSK_BRONZE_JC_DRAIN
 AS CALL DB_CITYBIKE_LOGS.PRO.DRAIN_JC_STAGE_STREAM();
 
 /*
-                NOAA: AFTER las 3 chains. WHEN streams citybike tienen datos.
+                NOAA: AFTER las 3 chains de citybike. WHEN streams citybike tienen datos.
 */
 CREATE OR REPLACE TASK TSK_BRONZE_NOAA
     WAREHOUSE = WH_NYCBIKE_DEV
-    AFTER TSK_BRONZE_NY_INT_DRAIN, TSK_BRONZE_JC_DRAIN
+    AFTER TSK_BRONZE_CITYBIKE_NY, TSK_BRONZE_NY_INT_DRAIN, TSK_BRONZE_JC_DRAIN
     WHEN SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.PRO.STM_CITYBIKE_NY')
       OR SYSTEM$STREAM_HAS_DATA('DB_CITYBIKE_LOGS.PRO.STM_CITYBIKE_JC')
 AS CALL PRO_CITYBIKE_BRONZE.NOAA.LOAD_NOAA_YEAR();
+
+-- Procedure: drena los table streams STM_CITYBIKE_NY y STM_CITYBIKE_JC.
+-- Sin esto, los streams quedan en estado "con datos" para siempre y el WHEN de TSK_BRONZE_NOAA
+-- siempre evalua TRUE despues del primer run.
+CREATE OR REPLACE PROCEDURE DRAIN_CITYBIKE_TABLE_STREAMS()
+RETURNS STRING
+LANGUAGE SQL
+AS
+DECLARE
+    v_ny NUMBER := 0;
+    v_jc NUMBER := 0;
+BEGIN
+    -- Insert + SELECT FROM stream avanza el offset del stream
+    INSERT INTO LOAD_LOG (task_name, outcome, details)
+    SELECT 'PRO_STM_CITYBIKE_NY', 'DRAIN', 'rows_consumidas=' || COUNT(*)
+    FROM STM_CITYBIKE_NY;
+
+    INSERT INTO LOAD_LOG (task_name, outcome, details)
+    SELECT 'PRO_STM_CITYBIKE_JC', 'DRAIN', 'rows_consumidas=' || COUNT(*)
+    FROM STM_CITYBIKE_JC;
+
+    RETURN 'Table streams citybike drenados';
+
+EXCEPTION
+    WHEN OTHER THEN
+        INSERT INTO LOAD_LOG (task_name, outcome, details)
+        VALUES ('PRO_DRAIN_CITYBIKE_TABLE_STREAMS', 'ERROR', :SQLERRM);
+        RAISE;
+END;
+
+-- Task de cierre: drena los table streams DESPUES de NOAA para que el WHEN del proximo cycle
+-- empiece "sin datos" y solo evalue TRUE cuando citybike vuelva a insertar.
+CREATE OR REPLACE TASK TSK_BRONZE_CITYBIKE_STREAMS_DRAIN
+    WAREHOUSE = WH_NYCBIKE_DEV
+    AFTER TSK_BRONZE_NOAA
+AS CALL DRAIN_CITYBIKE_TABLE_STREAMS();

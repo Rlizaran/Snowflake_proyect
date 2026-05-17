@@ -1,6 +1,9 @@
 -- slv_weather_station: dim de estaciones meteo derivada del seed, filtrada a las que aparecen en NOAA.
 -- city_id solo se asigna a las 2 estaciones del proyecto (USW00094728=Manhattan, USW00014734=Jersey City).
 -- Las demas estaciones tienen city_id = NULL (no participan en el join de fct_trips_weather).
+-- Materializado table: el join contra stg_NOAA (millones de filas) se hace una sola vez.
+
+{{ config(materialized='table') }}
 
 with raw_stations as (
     select * from {{ ref('weather_station_us') }}

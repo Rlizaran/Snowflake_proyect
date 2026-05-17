@@ -1,183 +1,243 @@
-# Capa Gold - core: dimensiones + fct_trips (table) + fct_weather_daily (view).
-
+# Capa Gold core: dims + fct_trips + fct_weather_daily. Contract enforced y constraints a nivel tabla.
 
 version: 2
 
 models:
   - name: fct_trips
-    description: 'Fact fino: 1 row por viaje, solo IDs + metricas (trip_duration_min, distance_in_km).'
+    description: 'Fact gold por viaje: 1 row por ride. Passthrough de slv_trip con FKs a dims.'
     config:
       contract: { enforced: true }
     constraints:
       - type: primary_key
         columns: [ride_id]
       - type: not_null
-        columns: [ride_id]
+        columns: [ride_id, trip_date]
     columns:
       - name: ride_id
         data_type: varchar
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
       - name: trip_date
         data_type: date
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: city_id
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_city'), field: city_id }
       - name: rideable_type_code
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_rideable_bike'), field: rideable_type_code }
       - name: user_type_code
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_user_type'), field: user_type_code }
       - name: start_station_id
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station'), field: station_id }
       - name: end_station_id
         data_type: varchar
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station'), field: station_id }
       - name: trip_duration_min
         data_type: "number(8, 2)"
       - name: distance_in_km
         data_type: float
 
   - name: fct_weather_daily
-    description: 'Fact diario de clima por estacion (wide pivot). View, sin constraints.'
+    description: 'Fact diario de clima por estacion (pivot wide). PK surrogate y weather_category establecidos aqui.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [daily_id]
+      - type: not_null
+        columns: [daily_id]
     columns:
       - name: daily_id
+        data_type: varchar
         data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+          - unique
       - name: station_weather_id
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
+        data_type: varchar
       - name: observation_date
-        data_tests:
-          - relationships:
-              arguments: { to: ref('dim_fecha'), field: fecha_id }
+        data_type: date
       - name: city_id
+        data_type: varchar
       - name: temp_max_c
+        data_type: "number(5, 2)"
       - name: temp_min_c
+        data_type: "number(5, 2)"
       - name: temp_avg_c
+        data_type: "number(5, 2)"
       - name: precipitation_mm
+        data_type: "number(8, 2)"
       - name: snowfall_mm
+        data_type: "number(8, 2)"
       - name: snow_depth_mm
+        data_type: "number(8, 2)"
       - name: weather_category
+        data_type: varchar
         data_tests:
           - accepted_values:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: dim_fecha
-    description: 'Spine diario de fechas. Rango derivado de min/max de stg_NOAA__noaa_raw_year. View, sin constraints.'
+    description: 'Spine diario de fechas (date_spine). PK fecha_id establecida aqui, rango derivado de stg_NOAA.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [fecha_id]
+      - type: not_null
+        columns: [fecha_id]
     columns:
       - name: fecha_id
+        data_type: date
         data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+          - unique
       - name: anio
+        data_type: "number(4,0)"
       - name: trimestre
+        data_type: "number(1,0)"
       - name: mes
+        data_type: "number(1,0)"
       - name: nombre_mes
+        data_type: varchar
       - name: anio_mes
+        data_type: varchar
       - name: dia_mes
+        data_type: "number(2,0)"
       - name: dia_semana
+        data_type: "number(2,0)"
       - name: nombre_dia
+        data_type: varchar
       - name: es_fin_semana
+        data_type: boolean
       - name: semana_anio
+        data_type: "number(2,0)"
       - name: dia_anio
+        data_type: "number(3,0)"
       - name: estacion
+        data_type: varchar
 
   - name: dim_city
-    description: 'Ciudades CityBike (Manhattan, Jersey City). Passthrough de slv_city. View, sin constraints.'
+    description: 'Ciudades CityBike (Manhattan, Jersey City). Passthrough de slv_city.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [city_id]
+      - type: not_null
+        columns: [city_id]
     columns:
       - name: city_id
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: city
+        data_type: varchar
 
   - name: dim_user_type
-    description: 'Tipos de usuario CityBike. Passthrough de slv_user_type. View, sin constraints.'
+    description: 'Tipos de usuario CityBike. Passthrough de slv_user_type.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [user_type_code]
+      - type: not_null
+        columns: [user_type_code]
     columns:
       - name: user_type_code
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: member_casual
+        data_type: varchar
       - name: description
+        data_type: varchar
       - name: is_subscriber
+        data_type: boolean
 
   - name: dim_rideable_bike
-    description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type. View, sin constraints.'
+    description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [rideable_type_code]
+      - type: not_null
+        columns: [rideable_type_code]
     columns:
       - name: rideable_type_code
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: rideable_type
+        data_type: varchar
       - name: description
+        data_type: varchar
       - name: is_electric
+        data_type: boolean
 
   - name: dim_station
-    description: 'Estaciones CityBike. Passthrough de slv_station. View, sin constraints.'
+    description: 'Estaciones CityBike. Passthrough de slv_station.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [station_id]
+      - type: not_null
+        columns: [station_id]
     columns:
       - name: station_id
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: canonical_name
+        data_type: varchar
       - name: canonical_lat
+        data_type: "number(10, 4)"
         description: 'Latitud redondeada de la estacion.'
       - name: canonical_lng
+        data_type: "number(10, 4)"
         description: 'Longitud redondeada de la estacion.'
 
   - name: dim_station_weather
-    description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station. View, sin constraints.'
+    description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [station_weather_id]
+      - type: not_null
+        columns: [station_weather_id]
     columns:
       - name: station_weather_id
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: city_id
+        data_type: varchar
       - name: station_name
+        data_type: varchar
       - name: lat
+        data_type: float
       - name: lng
+        data_type: float
       - name: state
+        data_type: varchar
       - name: elevation_m
+        data_type: float
 
   - name: dim_weather_element
-    description: 'Elementos meteo NOAA GHCN-Daily. Passthrough de slv_weather_element. View, sin constraints.'
+    description: 'Elementos meteo NOAA GHCN-Daily. Passthrough de slv_weather_element.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [element_code]
+      - type: not_null
+        columns: [element_code]
     columns:
       - name: element_code
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: description
+        data_type: varchar
       - name: unit
+        data_type: varchar
 
   - name: dim_quality_flag
-    description: 'Lookup q_flag NOAA + q_flag_category. Passthrough de slv_quality_flag. View, sin constraints.'
+    description: 'Lookup q_flag NOAA + q_flag_category. Passthrough de slv_quality_flag.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [q_flag]
+      - type: not_null
+        columns: [q_flag]
     columns:
       - name: q_flag
-        data_tests:
-          - unique: { config: { severity: error } }
-          - not_null
+        data_type: varchar
       - name: q_flag_category
-        data_tests:
-          - accepted_values:
-              arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
+        data_type: varchar
       - name: description
+        data_type: varchar

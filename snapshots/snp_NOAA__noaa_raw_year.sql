@@ -10,7 +10,6 @@
         strategy='check',
         check_cols=['data_value', 'q_flag_category'],
         invalidate_hard_deletes=false,
-        cluster_by=['year(observation_date)'],
         transient=false
     )
 }}

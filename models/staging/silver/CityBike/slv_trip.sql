@@ -1,4 +1,5 @@
 -- slv_trip: fact normalizado, un row por viaje (NY+JC unidos) con FKs a dims. Incremental MERGE por ride_id.
+-- Enrichment: trip_duration_min (datediff) y distance_in_km (ST_DISTANCE sobre coords canonicas de slv_station).
 -- distance_in_km = NULL si start = end (round trip) o si excede 500 (outlier de coords corruptas).
 
 {{ config(
@@ -8,6 +9,7 @@
     on_schema_change='append_new_columns'
 ) }}
 
+-- CTE trips: lee el batch incremental desde stg (filtra por load_ts > max(this))
 with trips as (
     select * from {{ ref('stg_CityBike__citybike_trips') }}
     {% if is_incremental() %}
@@ -15,7 +17,8 @@ with trips as (
     {% endif %}
 ),
 
-deduplicated as (
+-- CTE deduped: defensa intra-batch por si el mismo ride_id llega varias veces
+deduped as (
     select * from trips
     qualify row_number() over (
         partition by ride_id
@@ -23,10 +26,37 @@ deduplicated as (
     ) = 1
 ),
 
+-- CTE stations: coords canonicas para resolver ST_DISTANCE con un solo valor por station
+stations as (
+    select
+        station_id,
+        canonical_lat,
+        canonical_lng
+    from {{ ref('slv_station') }}
+),
+
+-- CTE enriched: aplica datediff + ST_DISTANCE usando JOIN a slv_station (start + end)
 enriched as (
     select
-        *
-    from deduplicated
+        t.ride_id,
+        date(t.started_at)                              as trip_date,
+        t.started_at,
+        t.ended_at,
+        datediff('minute', t.started_at, t.ended_at)    as trip_duration_min,
+        t.rideable_type,
+        t.member_casual,
+        t.city,
+        t.start_station_id,
+        t.end_station_id,
+        ST_DISTANCE(
+            ST_MAKEPOINT(s_start.canonical_lng, s_start.canonical_lat),
+            ST_MAKEPOINT(s_end.canonical_lng,   s_end.canonical_lat)
+        ) / 1000                                        as dist_km_raw,
+        t.source_file,
+        t.load_ts
+    from deduped t
+    left join stations s_start on t.start_station_id = s_start.station_id
+    left join stations s_end   on t.end_station_id   = s_end.station_id
 )
 
 select
@@ -34,7 +64,7 @@ select
     ride_id,
 
     -- FK fecha
-    date(started_at) as trip_date,
+    trip_date,
 
     -- atributos viaje
     started_at,
@@ -50,9 +80,9 @@ select
     -- distancia limpia (NULL si round-trip o outlier > 500)
     case
         when start_station_id = end_station_id then null
-        when dist_km > 500                    then null
-        when dist_km < 0                     then null
-        else dist_km
+        when dist_km_raw > 500                 then null
+        when dist_km_raw < 0                   then null
+        else round(dist_km_raw, 2)
     end as distance_in_km,
 
     -- FK ciudad

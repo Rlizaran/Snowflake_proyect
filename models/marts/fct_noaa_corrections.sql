@@ -1,5 +1,11 @@
 -- Gold fact: historico SCD2 NOAA expuesto para BI (todas las versiones del snapshot).
--- Cambio v8: drop de m_flag, s_flag y q_flag_category. q_flag se conserva como FK a dim_quality_flag.
+-- Materializado table (full refresh en cada dbt run) para reflejar siempre el snapshot al 100%.
+-- Cluster by year(observation_date) ayuda a Power BI cuando filtra historia por anio/mes.
+
+{{ config(
+    materialized='table',
+    cluster_by=['year(observation_date)']
+) }}
 
 -- CTE snap: lee snapshot completo (vigente + reemplazadas)
 with snap as (
@@ -14,6 +20,9 @@ select
     scd_key,
     station_id                as station_weather_id,
     observation_date,
+    year(observation_date)    as observation_year,
+    quarter(observation_date) as observation_quarter,
+    month(observation_date)   as observation_month,
     element                   as element_code,
     q_flag,
 
