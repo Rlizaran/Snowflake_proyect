@@ -2,15 +2,12 @@
 -- city_id solo se asigna a las 2 estaciones del proyecto (USW00094728=Manhattan, USW00014734=Jersey City).
 -- Las demas estaciones tienen city_id = NULL (no participan en el join de fct_trips_weather).
 -- Materializado table: el join contra stg_NOAA (millones de filas) se hace una sola vez.
+-- slv_weather_station.sql optimizado
 
 {{ config(materialized='table') }}
 
 with raw_stations as (
     select * from {{ ref('weather_station_us') }}
-),
-
-noaa_active as (
-    select distinct station_id from {{ ref('stg_NOAA__noaa_raw_year') }}
 ),
 
 mapped as (
@@ -27,7 +24,7 @@ mapped as (
         ws.state,
         ws.elevation_m
     from raw_stations ws
-    inner join noaa_active n on ws.station_id = n.station_id
+    where ws.station_id in (select station_id from {{ ref('stg_NOAA__noaa_raw_year') }})
 )
 
 select
