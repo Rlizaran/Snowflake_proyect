@@ -12,6 +12,10 @@ with bronze_valid_ny as (
       and start_station_id not ilike '%SYS%'
       and end_station_id is not null
       and end_station_id not ilike '%SYS%'
+      and start_lat between 40.67 and 40.88
+      and start_lng between -74.05 and -73.90
+      and end_lat between 40.67 and 40.88
+      and end_lng between -74.05 and -73.90
       and lower(trim(rideable_type)) in ('classic_bike','electric_bike')
       and lower(trim(member_casual)) in ('member','casual')
 ),
@@ -30,6 +34,10 @@ bronze_valid_jc as (
       and end_station_id not ilike '%SYS%'
       and lower(trim(rideable_type)) in ('classic_bike','electric_bike')
       and lower(trim(member_casual)) in ('member','casual')
+      and start_lat between 40.67 and 40.88
+      and start_lng between -74.05 and -73.90
+      and end_lat between 40.67 and 40.88
+      and end_lng between -74.05 and -73.90
 ),
 
 bronze_all as (
