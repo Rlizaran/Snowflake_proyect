@@ -128,7 +128,7 @@ models:
       - name: observation_quarter
         data_type: "number(1, 0)"
       - name: observation_month
-        data_type: "number(1, 0)"
+        data_type: "number(2, 0)"
       - name: element_code
         data_type: varchar
       - name: q_flag
