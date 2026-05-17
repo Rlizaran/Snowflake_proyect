@@ -9,8 +9,9 @@
     from {{ ref('stg_NOAA__noaa_raw_year') }}
 {%- endset -%}
 
+{%- set current_year = modules.datetime.date.today().year -%}
 {%- set min_date = '2024-01-01' -%}
-{%- set max_date = '2026-12-31' -%}
+{%- set max_date = (current_year) ~ '-12-31' -%}
 
 {%- if execute -%}
     {%- set results = run_query(min_max_query) -%}

@@ -6,7 +6,7 @@
     materialized='incremental',
     unique_key='ride_id',
     incremental_strategy='merge',
-    on_schema_change='append_new_columns'
+    on_schema_change='ignore'
 ) }}
 
 -- CTE trips: lee el batch incremental desde stg (filtra por load_ts > max(this))
