@@ -64,7 +64,13 @@ models:
       +schema: MARTS
       core:
         +schema: CORE
-
+      bikes:
+        +schema: MOBILITY
+      clima:
+        +schema: CLIMA
+      analytics:
+        +schema: ANALYTICS
+      
 # ============================================================================
 # CONFIGURACIÓN DE SEEDS
 # ============================================================================

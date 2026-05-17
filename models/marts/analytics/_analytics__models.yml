@@ -1,0 +1,57 @@
+# Capa Gold marts: facts pre-calculados con contract enforced y constraints a nivel tabla.
+
+version: 2
+
+models:
+  - name: fct_trips_weather
+    description: 'Cruce diario rides + clima por ciudad. Grano = (trip_date x city). Join nuevo a nivel gold: city_id -> station_weather_id.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [trip_weather_id]
+      - type: not_null
+        columns: [trip_weather_id]
+    columns:
+      - name: trip_weather_id
+        data_type: varchar
+        data_tests:
+          - unique
+      - name: trip_date
+        data_type: date
+      - name: city_id
+        data_type: varchar
+      - name: station_weather_id
+        description: 'FK a dim_station_weather. Join nuevo a nivel gold (no existe en silver), test aqui.'
+        data_type: varchar
+        data_tests:
+          - relationships:
+              arguments: { to: ref('dim_station_weather'), field: station_weather_id }
+      - name: n_trips
+        data_type: "number(38, 0)"
+      - name: n_trips_member
+        data_type: "number(38, 0)"
+      - name: n_trips_casual
+        data_type: "number(38, 0)"
+      - name: n_trips_classic
+        data_type: "number(38, 0)"
+      - name: n_trips_electric
+        data_type: "number(38, 0)"
+      - name: avg_duration_min
+        data_type: "number(8, 2)"
+      - name: avg_distance_km
+        data_type: "number(8, 2)"
+      - name: temp_max_c
+        data_type: "number(8, 2)"
+      - name: temp_min_c
+        data_type: "number(8, 2)"
+      - name: temp_avg_c
+        data_type: "number(8, 2)"
+      - name: precipitation_mm
+        data_type: "number(8, 2)"
+      - name: snowfall_mm
+        data_type: "number(8, 2)"
+      - name: snow_depth_mm
+        data_type: "number(8, 2)"
+      - name: weather_category
+        data_type: varchar
