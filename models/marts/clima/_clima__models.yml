@@ -39,7 +39,7 @@ models:
         data_type: "number(8, 2)"
       - name: weather_category
         data_type: varchar
-        data_tests:
+        tests:
           - accepted_values:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 

@@ -6,7 +6,7 @@
     materialized='incremental',
     unique_key='ride_id',
     incremental_strategy='merge',
-    on_schema_change='fail'
+    on_schema_change='sync_all_columns'
 ) }}
 
 with trips as (
