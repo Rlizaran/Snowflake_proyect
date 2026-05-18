@@ -154,6 +154,9 @@ unit_tests:
       - Round trip (start_station_id = end_station_id) -> distance_in_km = NULL
       - Trip normal (start != end, coords validas) -> distance_in_km computed (no NULL)
     model: slv_trip
+    overrides:
+      macros:
+        is_incremental: true
     given:
       - input: ref('stg_CityBike__citybike_trips')
         rows:
@@ -175,6 +178,8 @@ unit_tests:
         rows:
           - { station_id: 'STN_A', canonical_lat: 40.7589, canonical_lng: -73.9851 }
           - { station_id: 'STN_B', canonical_lat: 40.7505, canonical_lng: -73.9934 }
+      - input: this
+        rows: []
     expect:
       rows:
         - { ride_id: 'RT_001', distance_in_km: null,  trip_duration_min: 30 }
