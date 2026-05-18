@@ -156,7 +156,7 @@ unit_tests:
     model: slv_trip
     overrides:
       macros:
-        is_incremental: false
+        is_incremental: true
     given:
       - input: ref('stg_CityBike__citybike_trips')
         rows:
