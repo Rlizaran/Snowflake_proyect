@@ -1,4 +1,4 @@
-# Capa Gold marts: facts pre-calculados con contract enforced y constraints a nivel tabla.
+# Capa Gold marts/analytics (schema ANALYTICS): facts cross-dominio (MOBILITY + CLIMA).
 
 version: 2
 
@@ -14,44 +14,61 @@ models:
         columns: [trip_weather_id]
     columns:
       - name: trip_weather_id
+        description: 'PK surrogate MD5(trip_date, city_id). Granularidad del fact.'
         data_type: varchar
         data_tests:
           - unique
       - name: trip_date
+        description: 'Fecha del cruce trips + clima. FK a dim_fecha.'
         data_type: date
       - name: city_id
+        description: 'Ciudad. FK a dim_city.'
         data_type: varchar
       - name: station_weather_id
-        description: 'FK a dim_station_weather. Join nuevo a nivel gold (no existe en silver), test aqui.'
+        description: 'FK a dim_station_weather. Join nuevo a nivel gold (city_id -> station_weather_id), no existe en silver.'
         data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('dim_station_weather'), field: station_weather_id }
       - name: n_trips
+        description: 'Total de viajes del dia en la ciudad.'
         data_type: "number(38, 0)"
       - name: n_trips_member
+        description: 'Viajes del dia con member_casual = member.'
         data_type: "number(38, 0)"
       - name: n_trips_casual
+        description: 'Viajes del dia con member_casual = casual.'
         data_type: "number(38, 0)"
       - name: n_trips_classic
+        description: 'Viajes del dia con rideable_type = classic_bike.'
         data_type: "number(38, 0)"
       - name: n_trips_electric
+        description: 'Viajes del dia con rideable_type = electric_bike.'
         data_type: "number(38, 0)"
       - name: avg_duration_min
+        description: 'Duracion promedio (minutos) del dia en la ciudad.'
         data_type: "number(8, 2)"
       - name: avg_distance_km
+        description: 'Distancia promedio (km) del dia en la ciudad. Excluye round-trips y outliers (distance_in_km NULL).'
         data_type: "number(8, 2)"
       - name: temp_max_c
+        description: 'Temperatura maxima del dia (Celsius). Joineada desde fct_weather_daily.'
         data_type: "number(8, 2)"
       - name: temp_min_c
+        description: 'Temperatura minima del dia (Celsius).'
         data_type: "number(8, 2)"
       - name: temp_avg_c
+        description: 'Media de temp_max y temp_min (Celsius).'
         data_type: "number(8, 2)"
       - name: precipitation_mm
+        description: 'Precipitacion total del dia (mm).'
         data_type: "number(8, 2)"
       - name: snowfall_mm
+        description: 'Caida de nieve del dia (mm).'
         data_type: "number(8, 2)"
       - name: snow_depth_mm
+        description: 'Profundidad de nieve acumulada (mm).'
         data_type: "number(8, 2)"
       - name: weather_category
+        description: 'Clasificacion meteorologica del dia (rainy/snowy/hot/cold/mild). Heredada de fct_weather_daily.'
         data_type: varchar
