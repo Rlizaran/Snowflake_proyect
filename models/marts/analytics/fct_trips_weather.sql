@@ -4,7 +4,7 @@
     materialized='incremental',
     unique_key='trip_weather_id',
     incremental_strategy='merge',
-    on_schema_change='fail'
+    on_schema_change='append_new_columns'
 ) }}
 
 with daily_trips as (

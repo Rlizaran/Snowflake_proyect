@@ -1,8 +1,6 @@
 -- slv_weather_station: dim de estaciones meteo derivada del seed, filtrada a las que aparecen en NOAA.
 -- city_id se asigna via lookup en seed city_weather_station_map. Stations no mapeadas quedan con city_id NULL.
 
-{{ config(materialized='table') }}
-
 with raw_stations as (
     select * from {{ ref('weather_station_us') }}
 ),

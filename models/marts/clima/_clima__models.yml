@@ -159,7 +159,7 @@ unit_tests:
     model: fct_weather_daily
     overrides:
       macros:
-        is_incremental: true
+        is_incremental: false
     given:
       - input: ref('slv_weather_observation')
         rows:

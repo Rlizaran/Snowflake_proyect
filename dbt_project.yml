@@ -54,14 +54,14 @@ models:
       intermediate:
         +schema: intermediate
       silver:
-        +materialized: view
+        +materialized: table
         CityBike:
           +schema: CITYBIKE
         NOAA:
           +schema: NOAA
 
     marts:
-      +materialized: table
+      +materialized: view
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
       +schema: MARTS
       core:

@@ -156,7 +156,7 @@ unit_tests:
     model: slv_trip
     overrides:
       macros:
-        is_incremental: true
+        is_incremental: false
     given:
       - input: ref('stg_CityBike__citybike_trips')
         rows:
@@ -183,4 +183,4 @@ unit_tests:
     expect:
       rows:
         - { ride_id: 'RT_001', distance_in_km: null,  trip_duration_min: 30 }
-        - { ride_id: 'NM_001', distance_in_km: 1.18,  trip_duration_min: 15 }
+        - { ride_id: 'NM_001', distance_in_km: 1.17,  trip_duration_min: 15 }

@@ -4,7 +4,7 @@
     materialized='incremental',
     unique_key='daily_trip_id',
     incremental_strategy='merge',
-    on_schema_change='fail'
+    on_schema_change='append_new_columns'
 ) }}
 
 with trips as (
