@@ -1,6 +1,6 @@
 -- dim_fecha: spine diario de calendario anclado al rango min/max de observaciones NOAA.
 
-{{ config(materialized='view') }}
+{{ config(materialized='table') }}
 
 {%- set min_max_query -%}
     select
