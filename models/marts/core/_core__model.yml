@@ -1,39 +1,60 @@
-# Capa Gold core: dims + fct_trips + fct_weather_daily. Contract enforced y constraints a nivel tabla.
+# Capa Gold core: dims compartidos por mas de un dominio (CORE schema).
+# Politica: toda tabla en gold lleva contract + constraints (PK + NOT NULL).
 
 version: 2
 
 models:
 
   - name: dim_fecha
-    description: 'Spine diario de fechas (date_spine). PK fecha_id establecida aqui, rango derivado de stg_NOAA.'
+    description: 'Spine diario de fechas (date_spine). PK fecha_id, rango derivado de stg_NOAA.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [fecha_id]
+      - type: not_null
+        columns: [fecha_id]
     columns:
       - name: fecha_id
+        description: 'PK de la dim. Fecha calendario (DATE).'
         data_type: date
         data_tests:
           - unique
       - name: anio
+        description: 'Anio de la fecha (YYYY).'
         data_type: "number(4,0)"
       - name: trimestre
+        description: 'Trimestre 1-4.'
         data_type: "number(1,0)"
       - name: mes
+        description: 'Mes 1-12.'
         data_type: "number(1,0)"
       - name: nombre_mes
+        description: 'Nombre del mes en espanol (Enero, Febrero, ...).'
         data_type: varchar
       - name: anio_mes
+        description: 'Etiqueta YYYY-MM para agrupaciones mensuales en Power BI.'
         data_type: varchar
       - name: dia_mes
+        description: 'Dia del mes 1-31.'
         data_type: "number(2,0)"
       - name: dia_semana
+        description: 'Dia de la semana ISO (1=Lunes, 7=Domingo).'
         data_type: "number(2,0)"
       - name: nombre_dia
+        description: 'Nombre del dia en espanol (Lunes, Martes, ...).'
         data_type: varchar
       - name: es_fin_semana
+        description: 'TRUE si dia_semana in (6,7) [Sabado o Domingo].'
         data_type: boolean
       - name: semana_anio
+        description: 'Numero de semana del anio (1-53).'
         data_type: "number(2,0)"
       - name: dia_anio
+        description: 'Dia ordinal del anio (1-366).'
         data_type: "number(3,0)"
       - name: estacion
+        description: 'Estacion del anio asumiendo hemisferio norte por mes calendario: Dic-Feb=Invierno, Mar-May=Primavera, Jun-Ago=Verano, Sep-Nov=Otono.'
         data_type: varchar
 
   - name: dim_city
@@ -47,13 +68,8 @@ models:
         columns: [city_id]
     columns:
       - name: city_id
+        description: 'PK surrogate MD5 de city. Comparte valores con slv_city.city_id.'
         data_type: varchar
       - name: city
+        description: 'Nombre de la ciudad (Manhattan o Jersey City).'
         data_type: varchar
-
-
-
-
-
-
-

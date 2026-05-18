@@ -8,6 +8,15 @@ CREATE OR REPLACE WAREHOUSE WH_NYCBIKE_DEV
          SCALING_POLICY = 'ECONOMY'
          COMMENT = 'Warehouse para ingesta y transformaciones';
 
+-- Warehouse para ingesta y transformaciones PRO (separado de DEV para attribution de costes)
+CREATE OR REPLACE WAREHOUSE WH_NYCBIKE_PRO
+    WITH WAREHOUSE_SIZE = 'XSMALL'
+         AUTO_SUSPEND = 60
+         AUTO_RESUME = TRUE
+         INITIALLY_SUSPENDED = TRUE
+         SCALING_POLICY = 'ECONOMY'
+         COMMENT = 'Warehouse para ingesta y transformaciones en PRO';
+
 -- Warehouse para analisis en Notebooks
 CREATE OR REPLACE WAREHOUSE WH_ANALISIS
     WITH WAREHOUSE_SIZE = 'SMALL'

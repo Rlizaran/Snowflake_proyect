@@ -18,24 +18,18 @@ with trips as (
 )
 
 select
-    -- PK
     {{ dbt_utils.generate_surrogate_key([
         'trip_date',
         'city_id',
         'rideable_type_code',
         'user_type_code'
     ]) }} as daily_trip_id,
-
-    -- FKs
     trip_date,
     city_id,
     rideable_type_code,
     user_type_code,
-
-    -- series key (para ML.FORECAST: SERIES_COLNAME = 'series_key')
+    -- series_key concatena las FKs para ML.FORECAST (SERIES_COLNAME)
     city_id || '|' || rideable_type_code || '|' || user_type_code as series_key,
-
-    -- metricas
     count(*) as n_trips,
     avg(trip_duration_min)::decimal(10,2) as avg_duration_min,
     sum(trip_duration_min) as total_duration_min,
@@ -47,6 +41,5 @@ select
     min(distance_in_km) as min_distance_km,
     max(distance_in_km) as max_distance_km,
     median(distance_in_km)::decimal(10,2)  as median_distance_km
-
 from trips
 group by trip_date, city_id, rideable_type_code, user_type_code

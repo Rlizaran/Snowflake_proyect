@@ -1,10 +1,7 @@
 -- slv_quality_flag: lookup normalizado del q_flag NOAA y su q_flag_category.
 
 select
-    -- PK
     q_flag,
-
-    -- atributos
     q_flag_category,
     description
 from (

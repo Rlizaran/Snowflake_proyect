@@ -7,22 +7,27 @@ models:
     description: 'Modelo incremental que unifica viajes de NY (Manhattan) y JC. Primera capa con validacion de contenido.'
     columns:
       - name: ride_id
+        description: 'PK natural del viaje (string unico globalmente entre NY y JC).'
         data_tests:
           - unique
           - not_null
       - name: city
+        description: 'Ciudad del viaje. Manhattan = bronze NY; Jersey City = bronze JC.'
         data_tests:
           - accepted_values:
               arguments: { values: ['Manhattan', 'Jersey City'] }
       - name: rideable_type
+        description: 'Tipo de bici: classic_bike (mecanica) o electric_bike (con asistencia).'
         data_tests:
           - accepted_values:
               arguments: { values: ['classic_bike', 'electric_bike'] }
       - name: member_casual
+        description: 'Tipo de usuario: member (suscriptor) o casual (single ride / day pass).'
         data_tests:
           - accepted_values:
               arguments: { values: ['member', 'casual'] }
       - name: load_ts
+        description: 'Timestamp de ingesta a bronze. Usado como cursor incremental aguas abajo.'
         data_tests:
           - not_null
 
@@ -37,64 +42,73 @@ models:
         columns: [ride_id, trip_date]
     columns:
       - name: ride_id
+        description: 'PK natural del viaje. Passthrough de stg.'
         data_type: varchar
       - name: trip_date
-        description: 'FK a dim_fecha. Primer test del FK aqui.'
+        description: 'Fecha del viaje, derivada de started_at via date(). FK a dim_fecha.'
         data_type: date
         data_tests:
           - relationships:
               arguments: { to: ref('dim_fecha'), field: fecha_id }
       - name: started_at
+        description: 'Timestamp de inicio del viaje (sin TZ).'
         data_type: timestamp_ntz
       - name: ended_at
+        description: 'Timestamp de fin del viaje (sin TZ).'
         data_type: timestamp_ntz
       - name: trip_duration_min
+        description: 'Duracion del viaje en minutos: datediff(minute, started_at, ended_at).'
         data_type: "number(10, 2)"
       - name: distance_in_km
+        description: 'Distancia en linea recta (haversine) entre coords canonicas de start y end stations. NULL si round-trip (start_station_id = end_station_id) o si excede 500 km (outlier de coords corruptas).'
         data_type: float
       - name: rideable_type_code
-        description: 'FK a slv_rideable_type. Surrogate generado aqui.'
+        description: 'FK a slv_rideable_type. Surrogate MD5 de rideable_type generado aqui.'
         data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('slv_rideable_type'), field: rideable_type_code }
       - name: user_type_code
-        description: 'FK a slv_user_type. Surrogate generado aqui.'
+        description: 'FK a slv_user_type. Surrogate MD5 de member_casual generado aqui.'
         data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('slv_user_type'), field: user_type_code }
       - name: start_station_id
-        description: 'FK a slv_station.'
+        description: 'FK a slv_station. Station donde inicia el viaje.'
         data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('slv_station'), field: station_id }
       - name: end_station_id
-        description: 'FK a slv_station.'
+        description: 'FK a slv_station. Station donde termina el viaje.'
         data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('slv_station'), field: station_id }
       - name: city_id
-        description: 'FK a slv_city. Surrogate generado aqui.'
+        description: 'FK a slv_city. Surrogate MD5 de city generado aqui.'
         data_type: varchar
         data_tests:
           - relationships:
               arguments: { to: ref('slv_city'), field: city_id }
       - name: source_file
+        description: 'Linaje: nombre del CSV de bronze que origino el row.'
         data_type: varchar
       - name: load_ts
+        description: 'Linaje: timestamp de carga a bronze. Usado como cursor incremental MERGE.'
         data_type: timestamp_ntz
 
   - name: slv_city
     description: 'Lookup de ciudades CityBike (Manhattan, Jersey City). PK surrogate generado aqui.'
     columns:
       - name: city_id
+        description: 'PK surrogate MD5 de city.'
         data_tests:
           - unique
           - not_null
       - name: city
+        description: 'Nombre de la ciudad (Manhattan o Jersey City).'
         data_tests:
           - unique
 
@@ -102,10 +116,12 @@ models:
     description: 'Lookup de tipos de bicicleta CityBike. PK surrogate generado aqui.'
     columns:
       - name: rideable_type_code
+        description: 'PK surrogate MD5 de rideable_type.'
         data_tests:
           - unique
           - not_null
       - name: rideable_type
+        description: 'Nombre del tipo: classic_bike o electric_bike.'
         data_tests:
           - unique
 
@@ -113,17 +129,53 @@ models:
     description: 'Lookup de tipos de usuario CityBike (member, casual). PK surrogate generado aqui.'
     columns:
       - name: user_type_code
+        description: 'PK surrogate MD5 de member_casual.'
         data_tests:
           - unique
           - not_null
       - name: member_casual
+        description: 'Nombre del tipo: member o casual.'
         data_tests:
           - unique
 
   - name: slv_station
-    description: 'Estaciones canonicas CityBike (deduped via row_number sobre slv_trip).'
+    description: 'Estaciones canonicas CityBike (deduped via row_number sobre stg).'
     columns:
       - name: station_id
+        description: 'PK natural de la station (CityBike). Mismo ID en NY y JC, ambos pools unificados.'
         data_tests:
           - unique
           - not_null
+
+unit_tests:
+  - name: test_slv_trip_distance_null_logic
+    description: >
+      Valida la logica de distance_in_km en slv_trip:
+      - Round trip (start_station_id = end_station_id) -> distance_in_km = NULL
+      - Trip normal (start != end, coords validas) -> distance_in_km computed (no NULL)
+    model: slv_trip
+    given:
+      - input: ref('stg_CityBike__citybike_trips')
+        rows:
+          # Round trip: start = end -> debe ser NULL
+          - { ride_id: 'RT_001', city: 'Manhattan', rideable_type: 'classic_bike', member_casual: 'member',
+              started_at: '2024-01-01 10:00:00', ended_at: '2024-01-01 10:30:00',
+              start_station_id: 'STN_A', end_station_id: 'STN_A',
+              start_lat: 40.7589, start_lng: -73.9851, end_lat: 40.7589, end_lng: -73.9851,
+              start_station_name: 'A', end_station_name: 'A',
+              source_file: 'unit_test', load_ts: '2024-01-01 11:00:00' }
+          # Normal trip: start != end -> debe tener distancia
+          - { ride_id: 'NM_001', city: 'Manhattan', rideable_type: 'electric_bike', member_casual: 'casual',
+              started_at: '2024-01-01 12:00:00', ended_at: '2024-01-01 12:15:00',
+              start_station_id: 'STN_A', end_station_id: 'STN_B',
+              start_lat: 40.7589, start_lng: -73.9851, end_lat: 40.7505, end_lng: -73.9934,
+              start_station_name: 'A', end_station_name: 'B',
+              source_file: 'unit_test', load_ts: '2024-01-01 13:00:00' }
+      - input: ref('slv_station')
+        rows:
+          - { station_id: 'STN_A', canonical_lat: 40.7589, canonical_lng: -73.9851 }
+          - { station_id: 'STN_B', canonical_lat: 40.7505, canonical_lng: -73.9934 }
+    expect:
+      rows:
+        - { ride_id: 'RT_001', distance_in_km: null,  trip_duration_min: 30 }
+        - { ride_id: 'NM_001', distance_in_km: 1.18,  trip_duration_min: 15 }

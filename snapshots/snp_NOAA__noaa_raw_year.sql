@@ -14,26 +14,20 @@
     )
 }}
 
--- CTE raw_src: cast + escalado a unidad real + categorizacion de q_flag
 with raw_src as (
     select
-        -- PK SCD2 (station + date + element)
         upper(trim(station_id)) || '|' || trim(observation_date) || '|' || upper(trim(element)) as scd_key,
-
-        -- atributos
         upper(trim(station_id))                                                                  as station_id,
         to_date(observation_date, 'YYYYMMDD')                                                    as observation_date,
         upper(trim(element))                                                                     as element,
+        -- Elementos en decimas en bronze (NOAA GHCN-Daily): se escalan a unidad real (Celsius / mm / m/s).
         case
             when upper(trim(element)) in ('TMAX','TMIN','PRCP','AWND','WSF2','WSF5')
                 then round(try_to_decimal(data_value, 18, 2) / 10, 2)
             else try_to_decimal(data_value, 18, 2)
         end::decimal(18,2)                                                                       as data_value,
-
-        -- q_flag se conserva: dimension normalizada slv_quality_flag lo usa como PK
         trim(q_flag)                                                                             as q_flag,
-
-        -- q_flag_category vive aqui porque la SCD2 strategy 'check' lo necesita
+        -- q_flag_category vive aqui porque la SCD2 strategy 'check' la necesita en check_cols.
         case
             when coalesce(trim(q_flag), '') in ('Z','G', '') then 'OK'
             when trim(q_flag) = 'S'                          then 'SUSPECT'
@@ -43,8 +37,6 @@ with raw_src as (
             else 'UNKNOWN'
         end                                                                                      as q_flag_category,
         coalesce(try_cast(obs_time as int), 2400)                                                as obs_time,
-
-        -- linaje
         source_file,
         load_ts
     from {{ source('NOAA', 'noaa_raw_year') }}
@@ -53,7 +45,6 @@ with raw_src as (
       and upper(trim(element)) in ('TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5')
 ),
 
--- CTE deduped: colapsa duplicados intra-batch antes del MERGE del snapshot
 deduped as (
     select *
     from raw_src

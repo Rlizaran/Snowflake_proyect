@@ -8,9 +8,7 @@
     on_schema_change='fail'
 ) }}
 
-with
--- CTE obs: filtra ventana incremental sobre slv_weather_observation
-obs as (
+with obs as (
     select * from {{ ref('slv_weather_observation') }}
     {% if is_incremental() %}
         where observation_date >= (
@@ -24,7 +22,6 @@ stations as (
     select * from {{ ref('dim_station_weather') }}
 ),
 
--- CTE pivoted: pivot wide de elementos NOAA por (station, fecha)
 pivoted as (
     select
         o.station_id as station_weather_id,
@@ -41,23 +38,16 @@ pivoted as (
 )
 
 select
-    -- PK surrogate
     {{ dbt_utils.generate_surrogate_key(['station_weather_id', 'observation_date']) }} as daily_id,
-
-    -- FKs
     station_weather_id,
     observation_date,
     city_id,
-
-    -- metricas
     temp_max_c,
     temp_min_c,
     round((temp_max_c + temp_min_c) / 2, 2) as temp_avg_c,
     precipitation_mm,
     snowfall_mm,
     snow_depth_mm,
-
-    -- categorizacion
     case
         when precipitation_mm > 5 then 'rainy'
         when snowfall_mm > 0      then 'snowy'

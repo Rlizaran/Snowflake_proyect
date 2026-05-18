@@ -1,4 +1,5 @@
-# Capa Gold core: dims + fct_trips + fct_weather_daily. Contract enforced y constraints a nivel tabla.
+# Capa Gold marts/clima (schema CLIMA): facts NOAA + dims mono-dominio.
+# Politica: toda tabla en gold lleva contract + constraints (PK + NOT NULL).
 
 version: 2
 
@@ -41,6 +42,51 @@ models:
         data_tests:
           - accepted_values:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
+
+  - name: fct_noaa_corrections
+    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). PK surrogate generado aqui.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [observation_version_id]
+      - type: not_null
+        columns: [observation_version_id, scd_key, station_weather_id]
+    columns:
+      - name: observation_version_id
+        data_type: varchar
+        data_tests:
+          - unique
+      - name: scd_key
+        data_type: varchar
+      - name: station_weather_id
+        data_type: varchar
+      - name: observation_date
+        data_type: date
+      - name: observation_year
+        data_type: "number(4, 0)"
+      - name: observation_quarter
+        data_type: "number(1, 0)"
+      - name: observation_month
+        data_type: "number(2, 0)"
+      - name: element_code
+        data_type: varchar
+      - name: q_flag
+        data_type: varchar
+      - name: data_value
+        data_type: "number(18, 2)"
+      - name: obs_time
+        data_type: "number(38, 0)"
+      - name: dbt_valid_from
+        data_type: timestamp_ntz
+      - name: dbt_valid_to
+        data_type: timestamp_ntz
+      - name: dbt_updated_at
+        data_type: timestamp_ntz
+      - name: is_current
+        data_type: boolean
+      - name: is_superseded
+        data_type: boolean
 
   - name: dim_station_weather
     description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station.'
@@ -101,47 +147,44 @@ models:
       - name: description
         data_type: varchar
 
-  - name: fct_noaa_corrections
-    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). PK surrogate generado aqui.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [observation_version_id]
-      - type: not_null
-        columns: [observation_version_id, scd_key, station_weather_id]
-    columns:
-      - name: observation_version_id
-        data_type: varchar
-        data_tests:
-          - unique
-      - name: scd_key
-        data_type: varchar
-      - name: station_weather_id
-        data_type: varchar
-      - name: observation_date
-        data_type: date
-      - name: observation_year
-        data_type: "number(4, 0)"
-      - name: observation_quarter
-        data_type: "number(1, 0)"
-      - name: observation_month
-        data_type: "number(2, 0)"
-      - name: element_code
-        data_type: varchar
-      - name: q_flag
-        data_type: varchar
-      - name: data_value
-        data_type: "number(18, 2)"
-      - name: obs_time
-        data_type: "number(38, 0)"
-      - name: dbt_valid_from
-        data_type: timestamp_ntz
-      - name: dbt_valid_to
-        data_type: timestamp_ntz
-      - name: dbt_updated_at
-        data_type: timestamp_ntz
-      - name: is_current
-        data_type: boolean
-      - name: is_superseded
-        data_type: boolean
+unit_tests:
+  - name: test_fct_weather_daily_weather_category_classification
+    description: >
+      Valida la clasificacion de weather_category segun los thresholds del CASE WHEN:
+      - PRCP > 5 -> rainy
+      - SNOW > 0 (y prcp <= 5) -> snowy
+      - TMAX > 25 -> hot
+      - TMAX < 5 -> cold
+      - resto -> mild
+    model: fct_weather_daily
+    given:
+      - input: ref('slv_weather_observation')
+        rows:
+          # rainy: prcp > 5
+          - { observation_id: 'r-prcp', station_id: 'X', observation_date: '2024-01-01', element_code: 'PRCP', data_value: 10.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 'r-tmax', station_id: 'X', observation_date: '2024-01-01', element_code: 'TMAX', data_value: 20.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 'r-tmin', station_id: 'X', observation_date: '2024-01-01', element_code: 'TMIN', data_value: 10.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          # snowy: snow > 0 (prcp = 2, no rainy)
+          - { observation_id: 's-snow', station_id: 'X', observation_date: '2024-01-02', element_code: 'SNOW', data_value:  3.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 's-prcp', station_id: 'X', observation_date: '2024-01-02', element_code: 'PRCP', data_value:  2.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 's-tmax', station_id: 'X', observation_date: '2024-01-02', element_code: 'TMAX', data_value: -1.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 's-tmin', station_id: 'X', observation_date: '2024-01-02', element_code: 'TMIN', data_value: -5.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          # hot: tmax > 25
+          - { observation_id: 'h-tmax', station_id: 'X', observation_date: '2024-01-03', element_code: 'TMAX', data_value: 30.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 'h-tmin', station_id: 'X', observation_date: '2024-01-03', element_code: 'TMIN', data_value: 20.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          # cold: tmax < 5
+          - { observation_id: 'c-tmax', station_id: 'X', observation_date: '2024-01-04', element_code: 'TMAX', data_value:  2.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 'c-tmin', station_id: 'X', observation_date: '2024-01-04', element_code: 'TMIN', data_value: -2.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          # mild: ninguna condicion previa
+          - { observation_id: 'm-tmax', station_id: 'X', observation_date: '2024-01-05', element_code: 'TMAX', data_value: 18.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+          - { observation_id: 'm-tmin', station_id: 'X', observation_date: '2024-01-05', element_code: 'TMIN', data_value: 10.0, q_flag: '', source_file: 'unit', load_ts: '2024-01-01' }
+      - input: ref('dim_station_weather')
+        rows:
+          - { station_weather_id: 'X', city_id: 'CITY_TEST' }
+    expect:
+      rows:
+        - { observation_date: '2024-01-01', weather_category: 'rainy' }
+        - { observation_date: '2024-01-02', weather_category: 'snowy' }
+        - { observation_date: '2024-01-03', weather_category: 'hot' }
+        - { observation_date: '2024-01-04', weather_category: 'cold' }
+        - { observation_date: '2024-01-05', weather_category: 'mild' }

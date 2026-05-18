@@ -6,10 +6,9 @@
     materialized='incremental',
     unique_key='ride_id',
     incremental_strategy='merge',
-    on_schema_change='ignore'
+    on_schema_change='fail'
 ) }}
 
--- CTE trips: lee el batch incremental desde stg (filtra por load_ts > max(this))
 with trips as (
     select * from {{ ref('stg_CityBike__citybike_trips') }}
     {% if is_incremental() %}
@@ -17,7 +16,6 @@ with trips as (
     {% endif %}
 ),
 
--- CTE deduped: defensa intra-batch por si el mismo ride_id llega varias veces
 deduped as (
     select * from trips
     qualify row_number() over (
@@ -26,7 +24,6 @@ deduped as (
     ) = 1
 ),
 
--- CTE stations: coords canonicas para resolver ST_DISTANCE con un solo valor por station
 stations as (
     select
         station_id,
@@ -35,7 +32,6 @@ stations as (
     from {{ ref('slv_station') }}
 ),
 
--- CTE enriched: aplica datediff + ST_DISTANCE usando JOIN a slv_station (start + end)
 enriched as (
     select
         t.ride_id,
@@ -60,35 +56,22 @@ enriched as (
 )
 
 select
-    -- PK
     ride_id,
-
-    -- FK fecha
     trip_date,
-
-    -- atributos viaje
     started_at,
     ended_at,
     trip_duration_min,
-
-    -- FKs dimensiones
     {{ dbt_utils.generate_surrogate_key(['rideable_type']) }} as rideable_type_code,
     {{ dbt_utils.generate_surrogate_key(['member_casual']) }} as user_type_code,
     start_station_id,
     end_station_id,
-
-    -- distancia limpia (NULL si round-trip o outlier > 500)
     case
         when start_station_id = end_station_id then null
         when dist_km_raw > 500                 then null
         when dist_km_raw < 0                   then null
         else round(dist_km_raw, 2)
     end as distance_in_km,
-
-    -- FK ciudad
     {{ dbt_utils.generate_surrogate_key(['city']) }} as city_id,
-
-    -- linaje
     source_file,
     load_ts
 from enriched

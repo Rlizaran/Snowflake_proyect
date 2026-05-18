@@ -1,10 +1,12 @@
 -- Rol dedicado del proyecto + grants sobre las 3 DBs medallion (Bronze / Silver / Gold)
 -- Rol del proyecto: separa permisos del ACCOUNTADMIN
 CREATE ROLE IF NOT EXISTS ROLE_NYCBIKE
-    COMMENT = 'Rol opera sobre DEV_/PRO_CITYBIKE_BRONZE, DEV_CITYBIKE_SILVER/GOLD y WH_NYCBIKE_DEV';
+    COMMENT = 'Rol opera sobre DEV_/PRO_CITYBIKE_BRONZE, DEV_/PRO_CITYBIKE_SILVER/GOLD y WH_NYCBIKE_DEV/PRO';
 
--- Permisos sobre el warehouse
+-- Permisos sobre los warehouses (DEV y PRO separados para atribucion de costes)
 GRANT USAGE, OPERATE ON WAREHOUSE WH_NYCBIKE_DEV TO ROLE ROLE_NYCBIKE;
+GRANT USAGE, OPERATE ON WAREHOUSE WH_NYCBIKE_PRO TO ROLE ROLE_NYCBIKE;
+GRANT USAGE, OPERATE ON WAREHOUSE WH_ANALISIS    TO ROLE ROLE_NYCBIKE;
 
 -- Permiso necesario para crear / ejecutar TASKS (automatizacion Bronze)
 GRANT EXECUTE TASK ON ACCOUNT TO ROLE ROLE_NYCBIKE;

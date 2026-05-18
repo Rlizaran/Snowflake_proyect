@@ -85,36 +85,23 @@ cleaned as (
 deduped as (
     select * from cleaned
     qualify row_number() over (partition by ride_id order by load_ts desc) = 1
-),
-
-enriched as (
-    select
-        -- PK
-        ride_id,
-
-        -- atributos viaje
-        rideable_type,
-        started_at,
-        ended_at,
-
-        -- atributos estacion (raw, slv_station calcula coords canonicas)
-        start_station_name,
-        start_station_id,
-        end_station_name,
-        end_station_id,
-        start_lat,
-        start_lng,
-        end_lat,
-        end_lng,
-
-        -- atributos usuario / ciudad
-        member_casual,
-        city,
-
-        -- linaje
-        source_file,
-        load_ts
-    from deduped
 )
 
-select * from enriched
+select
+    ride_id,
+    rideable_type,
+    started_at,
+    ended_at,
+    start_station_name,
+    start_station_id,
+    end_station_name,
+    end_station_id,
+    start_lat,
+    start_lng,
+    end_lat,
+    end_lng,
+    member_casual,
+    city,
+    source_file,
+    load_ts
+from deduped

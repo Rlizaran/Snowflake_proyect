@@ -30,10 +30,7 @@ with date_spine as (
 )
 
 select
-    -- PK
     date_day as fecha_id,
-
-    -- atributos calendario
     year(date_day) as anio,
     quarter(date_day) as trimestre,
     month(date_day) as mes,

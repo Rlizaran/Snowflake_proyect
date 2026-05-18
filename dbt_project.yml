@@ -39,7 +39,9 @@ models:
   +transient: false
   snowflake_proyect:
     +snowflake_warehouse: >
-      {%- if flags.FULL_REFRESH or flags.WHICH == 'build' -%}
+      {%- if env_var('DBT_ENVIRONMENTS', 'DEV') == 'PRO' -%}
+        WH_NYCBIKE_PRO
+      {%- elif flags.FULL_REFRESH or flags.WHICH == 'build' -%}
         WH_ANALISIS
       {%- else -%}
         WH_NYCBIKE_DEV
@@ -90,6 +92,10 @@ seeds:
         state: VARCHAR(3)
         station_name: VARCHAR(100)
         city: VARCHAR(100)
+    city_weather_station_map:
+      +column_types:
+        project_city: VARCHAR(100)
+        station_weather_id: VARCHAR(100)
 
 # ============================================================================
 # CONFIGURACIÓN DE SNAPSHOTS

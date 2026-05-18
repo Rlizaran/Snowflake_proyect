@@ -105,3 +105,16 @@ WHERE station_id='USW00094728' AND observation_date='20240101' AND element='TMAX
 ```
 
 Si quieres limpiar el historial del SCD2 también: `dbt snapshot --full-refresh` (cuidado, recrea toda la tabla).
+
+---
+
+## Demo condensada para clase — `demo_live_class.sql`
+
+Variante alternativa más corta pensada para demo en vivo (clase / entrevista):
+
+- Solo 2 ride_ids por fuente (4 trips totales) + 2 observaciones NOAA — basta para que stream + WHEN se disparen.
+- Ejecuta `TSK_BRONZE_MASTER` manualmente con `EXECUTE TASK` para no esperar al cron del día 28.
+- Verifica el TASK_HISTORY y los modelos gold (`MOBILITY.FCT_TRIPS`, `CLIMA.FCT_NOAA_CORRECTIONS`, snapshot SCD2).
+- Cleanup de bronze + drop de todos los schemas dbt al final → permite un `dbt build --full-refresh` limpio.
+
+5 pasos secuenciales en un solo archivo: `demo_live_class.sql`. Cada paso ejecutable independiente en Snowsight.
