@@ -1,6 +1,6 @@
 -- dim_fecha: spine diario de calendario anclado al rango min/max de observaciones NOAA.
 
-{{ config(materialized='view') }}
+{{ config(materialized='table') }}
 
 {%- set min_max_query -%}
     select
@@ -9,8 +9,9 @@
     from {{ ref('stg_NOAA__noaa_raw_year') }}
 {%- endset -%}
 
+{%- set current_year = modules.datetime.date.today().year -%}
 {%- set min_date = '2024-01-01' -%}
-{%- set max_date = '2026-12-31' -%}
+{%- set max_date = (current_year) ~ '-12-31' -%}
 
 {%- if execute -%}
     {%- set results = run_query(min_max_query) -%}
@@ -29,10 +30,7 @@ with date_spine as (
 )
 
 select
-    -- PK
     date_day as fecha_id,
-
-    -- atributos calendario
     year(date_day) as anio,
     quarter(date_day) as trimestre,
     month(date_day) as mes,

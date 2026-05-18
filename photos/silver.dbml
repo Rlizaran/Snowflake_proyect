@@ -8,19 +8,22 @@ Project SilverLayer {
 
 // ---------- CityBike ----------
 
-Table "stg_CityBike__citybike_trips (view)" {
+Table "stg_CityBike__citybike_trips (table)" {
   ride_id varchar [pk]
   city varchar
   rideable_type varchar
   member_casual varchar
   started_at timestamp_ntz
   ended_at timestamp_ntz
-  trip_duration_min number
-  dist_km float
   start_station_id varchar
   end_station_id varchar
+  start_lat number
+  start_lng number
+  end_lat number
+  end_lng number
   source_file varchar
   load_ts timestamp_ntz
+  Note: 'Cast + clean + dedupe. Bounding box NY/NJ aplicado. Sin enrichment.'
 }
 
 Table "slv_trip (table)" {
@@ -29,36 +32,37 @@ Table "slv_trip (table)" {
   started_at timestamp_ntz
   ended_at timestamp_ntz
   trip_duration_min number
-  trip_distance_km float
-  rideable_type_code varchar [ref: > "slv_rideable_type (view)".rideable_type_code]
-  user_type_code varchar [ref: > "slv_user_type (view)".user_type_code]
-  start_station_id varchar [ref: > "slv_station (view)".station_id]
-  end_station_id varchar [ref: > "slv_station (view)".station_id]
-  city_id varchar [ref: > "slv_city (view)".city_id]
+  distance_in_km float
+  rideable_type_code varchar [ref: > "slv_rideable_type (table)".rideable_type_code]
+  user_type_code varchar [ref: > "slv_user_type (table)".user_type_code]
+  start_station_id varchar [ref: > "slv_station (table)".station_id]
+  end_station_id varchar [ref: > "slv_station (table)".station_id]
+  city_id varchar [ref: > "slv_city (table)".city_id]
   source_file varchar
   load_ts timestamp_ntz
+  Note: 'Fact incremental. trip_duration_min via datediff; distance_in_km via ST_DISTANCE sobre coords canonicas de slv_station.'
 }
 
-Table "slv_city (view)" {
+Table "slv_city (table)" {
   city_id varchar [pk]
   city varchar
 }
 
-Table "slv_rideable_type (view)" {
+Table "slv_rideable_type (table)" {
   rideable_type_code varchar [pk]
   rideable_type varchar
   description varchar
   is_electric boolean
 }
 
-Table "slv_user_type (view)" {
+Table "slv_user_type (table)" {
   user_type_code varchar [pk]
   member_casual varchar
   description varchar
   is_subscriber boolean
 }
 
-Table "slv_station (view)" {
+Table "slv_station (table)" {
   station_id varchar [pk]
   canonical_name varchar
   canonical_lat number
@@ -96,7 +100,7 @@ Table "stg_NOAA__noaa_raw_year (view)" {
 
 Table "slv_weather_observation (view)" {
   observation_id varchar [pk]
-  station_id varchar [ref: > "slv_weather_station (view)".station_weather_id]
+  station_id varchar [ref: > "slv_weather_station (table)".station_weather_id]
   observation_date date
   element_code varchar [ref: > "slv_weather_element (view)".element_code]
   q_flag varchar [ref: > "slv_quality_flag (view)".q_flag]
@@ -105,9 +109,9 @@ Table "slv_weather_observation (view)" {
   load_ts timestamp_ntz
 }
 
-Table "slv_weather_station (view)" {
+Table "slv_weather_station (table)" {
   station_weather_id varchar [pk]
-  city_id varchar [ref: > "slv_city (view)".city_id]
+  city_id varchar [ref: > "slv_city (table)".city_id]
   station_name varchar
   lat float
   lng float

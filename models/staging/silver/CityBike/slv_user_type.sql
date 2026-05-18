@@ -1,4 +1,6 @@
--- slv_user_type: lookup de tipos de usuario CityBike (member, casual).
+-- slv_user_type: lookup de tipos de usuario CityBike (member, casual). Materializado table.
+
+{{ config(materialized='table') }}
 
 with distinct_types as (
     select distinct member_casual
@@ -6,10 +8,7 @@ with distinct_types as (
 )
 
 select
-    -- PK
     {{ dbt_utils.generate_surrogate_key(['member_casual']) }} as user_type_code,
-
-    -- atributos
     member_casual,
     case member_casual
         when 'member' then 'Suscriptor anual / mensual'

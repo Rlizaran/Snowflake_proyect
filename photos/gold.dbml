@@ -1,14 +1,14 @@
 // Gold layer ERD (DB_CITYBIKE_GOLD). PKs + FKs + relaciones basicas.
-// Sufijo (table) / (view) indica la materializacion dbt de cada modelo.
+// Sufijo (table) indica la materializacion dbt: toda Gold se materializa como tabla.
 
 Project GoldLayer {
   database_type: 'Snowflake'
-  Note: 'Capa Gold: dimensiones (CORE) + facts (MARTS) consumibles por Power BI.'
+  Note: 'Capa Gold: dimensiones (CORE) + facts (MARTS) consumibles por Power BI. Todo table.'
 }
 
 // ---------- CORE: dimensiones ----------
 
-Table "dim_fecha (view)" {
+Table "dim_fecha (table)" {
   fecha_id date [pk]
   anio number
   trimestre number
@@ -24,35 +24,35 @@ Table "dim_fecha (view)" {
   estacion varchar
 }
 
-Table "dim_city (view)" {
+Table "dim_city (table)" {
   city_id varchar [pk]
   city varchar
 }
 
-Table "dim_user_type (view)" {
+Table "dim_user_type (table)" {
   user_type_code varchar [pk]
   member_casual varchar
   description varchar
   is_subscriber boolean
 }
 
-Table "dim_rideable_bike (view)" {
+Table "dim_rideable_bike (table)" {
   rideable_type_code varchar [pk]
   rideable_type varchar
   description varchar
   is_electric boolean
 }
 
-Table "dim_station (view)" {
+Table "dim_station (table)" {
   station_id varchar [pk]
   canonical_name varchar
   canonical_lat number
   canonical_lng number
 }
 
-Table "dim_station_weather (view)" {
+Table "dim_station_weather (table)" {
   station_weather_id varchar [pk]
-  city_id varchar [ref: > "dim_city (view)".city_id]
+  city_id varchar [ref: > "dim_city (table)".city_id]
   station_name varchar
   lat float
   lng float
@@ -60,13 +60,13 @@ Table "dim_station_weather (view)" {
   elevation_m float
 }
 
-Table "dim_weather_element (view)" {
+Table "dim_weather_element (table)" {
   element_code varchar [pk]
   description varchar
   unit varchar
 }
 
-Table "dim_quality_flag (view)" {
+Table "dim_quality_flag (table)" {
   q_flag varchar [pk]
   q_flag_category varchar
   description varchar
@@ -74,24 +74,24 @@ Table "dim_quality_flag (view)" {
 
 // ---------- MARTS: facts ----------
 
-Table "fct_trips (table)" {
+Table "fct_trips (table, incr. + cluster year(trip_date))" {
   ride_id varchar [pk]
-  trip_date date [ref: > "dim_fecha (view)".fecha_id]
-  city_id varchar [ref: > "dim_city (view)".city_id]
-  rideable_type_code varchar [ref: > "dim_rideable_bike (view)".rideable_type_code]
-  user_type_code varchar [ref: > "dim_user_type (view)".user_type_code]
-  start_station_id varchar [ref: > "dim_station (view)".station_id]
-  end_station_id varchar [ref: > "dim_station (view)".station_id]
+  trip_date date [ref: > "dim_fecha (table)".fecha_id]
+  city_id varchar [ref: > "dim_city (table)".city_id]
+  rideable_type_code varchar [ref: > "dim_rideable_bike (table)".rideable_type_code]
+  user_type_code varchar [ref: > "dim_user_type (table)".user_type_code]
+  start_station_id varchar [ref: > "dim_station (table)".station_id]
+  end_station_id varchar [ref: > "dim_station (table)".station_id]
   trip_duration_min number
   distance_in_km float
 }
 
-Table "fct_trips_daily (table)" {
+Table "fct_trips_daily (table, incr.)" {
   daily_trip_id varchar [pk]
-  trip_date date [ref: > "dim_fecha (view)".fecha_id]
-  city_id varchar [ref: > "dim_city (view)".city_id]
-  rideable_type_code varchar [ref: > "dim_rideable_bike (view)".rideable_type_code]
-  user_type_code varchar [ref: > "dim_user_type (view)".user_type_code]
+  trip_date date [ref: > "dim_fecha (table)".fecha_id]
+  city_id varchar [ref: > "dim_city (table)".city_id]
+  rideable_type_code varchar [ref: > "dim_rideable_bike (table)".rideable_type_code]
+  user_type_code varchar [ref: > "dim_user_type (table)".user_type_code]
   series_key varchar
   n_trips number
   avg_duration_min number
@@ -106,11 +106,11 @@ Table "fct_trips_daily (table)" {
   median_distance_km number
 }
 
-Table "fct_trips_weather (table)" {
+Table "fct_trips_weather (table, incr.)" {
   trip_weather_id varchar [pk]
-  trip_date date [ref: > "dim_fecha (view)".fecha_id]
-  city_id varchar [ref: > "dim_city (view)".city_id]
-  station_weather_id varchar [ref: > "dim_station_weather (view)".station_weather_id]
+  trip_date date [ref: > "dim_fecha (table)".fecha_id]
+  city_id varchar [ref: > "dim_city (table)".city_id]
+  station_weather_id varchar [ref: > "dim_station_weather (table)".station_weather_id]
   n_trips number
   n_trips_member number
   n_trips_casual number
@@ -127,10 +127,10 @@ Table "fct_trips_weather (table)" {
   weather_category varchar
 }
 
-Table "fct_weather_daily (view)" {
+Table "fct_weather_daily (table, incr.)" {
   daily_id varchar [pk]
-  station_weather_id varchar [ref: > "dim_station_weather (view)".station_weather_id]
-  observation_date date [ref: > "dim_fecha (view)".fecha_id]
+  station_weather_id varchar [ref: > "dim_station_weather (table)".station_weather_id]
+  observation_date date [ref: > "dim_fecha (table)".fecha_id]
   city_id varchar
   temp_max_c number
   temp_min_c number
@@ -141,16 +141,16 @@ Table "fct_weather_daily (view)" {
   weather_category varchar
 }
 
-Table "fct_noaa_corrections (view)" {
+Table "fct_noaa_corrections (table + cluster year(observation_date))" {
   observation_version_id varchar [pk]
   scd_key varchar
-  station_weather_id varchar [ref: > "dim_station_weather (view)".station_weather_id]
-  observation_date date [ref: > "dim_fecha (view)".fecha_id]
+  station_weather_id varchar [ref: > "dim_station_weather (table)".station_weather_id]
+  observation_date date [ref: > "dim_fecha (table)".fecha_id]
   observation_year number
   observation_quarter number
   observation_month number
-  element_code varchar [ref: > "dim_weather_element (view)".element_code]
-  q_flag varchar [ref: > "dim_quality_flag (view)".q_flag]
+  element_code varchar [ref: > "dim_weather_element (table)".element_code]
+  q_flag varchar [ref: > "dim_quality_flag (table)".q_flag]
   data_value number
   obs_time number
   dbt_valid_from timestamp_ntz

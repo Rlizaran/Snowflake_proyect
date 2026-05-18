@@ -6,7 +6,7 @@
     snowflake_warehouse='WH_ANALISIS',
     incremental_strategy='merge',
     unique_key='ride_id',
-    merge_update_columns=['rideable_type','started_at','ended_at','trip_duration_min',
+    merge_update_columns=['rideable_type','started_at','ended_at',
     'start_station_name','start_station_id','end_station_name','end_station_id',
     'start_lat','start_lng','end_lat','end_lng','member_casual',
     'source_file','load_ts']
@@ -74,46 +74,34 @@ cleaned as (
       and start_station_id not ilike '%SYS%'
       and end_station_id is not null
       and end_station_id not ilike '%SYS%'
+      -- Bounding box NY/NJ: descarta stations demo fuera del area (ej. LA).
+      -- NULLs pasan: pueden ser datos rotos pero no son demos LA, distancia downstream queda NULL via JOIN.
+      and (start_lat is null or start_lat between 40.4 and 41)
+      and (start_lng is null or start_lng between -75 and -73)
+      and (end_lat   is null or end_lat   between 40.4 and 41)
+      and (end_lng   is null or end_lng   between -75 and -73)
 ),
 
 deduped as (
     select * from cleaned
     qualify row_number() over (partition by ride_id order by load_ts desc) = 1
-),
-
-enriched as (
-    select
-        -- PK
-        ride_id,
-
-        -- atributos viaje
-        rideable_type,
-        started_at,
-        ended_at,
-        datediff('minute', started_at, ended_at) as trip_duration_min,
-
-        -- atributos estacion
-        start_station_name,
-        start_station_id,
-        end_station_name,
-        end_station_id,
-        start_lat,
-        start_lng,
-        end_lat,
-        end_lng,
-        coalesce(round(ST_DISTANCE(
-            ST_MAKEPOINT(start_lng, start_lat),
-            ST_MAKEPOINT(end_lng,   end_lat)
-        )/1000, 2), 0) as dist_km,  -- aprox distance in km since its a straight line and not the actual distance
-
-        -- atributos usuario / ciudad
-        member_casual,
-        city,
-
-        -- linaje
-        source_file,
-        load_ts
-    from deduped
 )
 
-select * from enriched
+select
+    ride_id,
+    rideable_type,
+    started_at,
+    ended_at,
+    start_station_name,
+    start_station_id,
+    end_station_name,
+    end_station_id,
+    start_lat,
+    start_lng,
+    end_lat,
+    end_lng,
+    member_casual,
+    city,
+    source_file,
+    load_ts
+from deduped

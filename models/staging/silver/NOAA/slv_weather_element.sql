@@ -1,10 +1,7 @@
 -- slv_weather_element: lookup de elementos meteorologicos NOAA GHCN-Daily usados en el proyecto.
 
 select
-    -- PK
     element_code,
-
-    -- atributos
     description,
     unit
 from (

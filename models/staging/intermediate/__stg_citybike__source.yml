@@ -21,38 +21,53 @@ sources:
         description: 'Viajes raw de Jersey City (PUT manual al stage interno).'
         columns:
           - name: ride_id
+            description: 'PK natural del viaje. NULL como warn (basura de Citi Bike).'
             data_type: varchar
             data_tests:
               - not_null: { config: { severity: warn } }
           - name: rideable_type
+            description: 'Tipo de bici raw (classic_bike, electric_bike, otros).'
             data_type: varchar
           - name: started_at
+            description: 'Timestamp de inicio del viaje en formato string.'
             data_type: varchar
           - name: ended_at
+            description: 'Timestamp de fin del viaje en formato string.'
             data_type: varchar
           - name: start_station_name
+            description: 'Nombre legible de la station de inicio.'
             data_type: varchar
           - name: start_station_id
+            description: 'ID de la station de inicio.'
             data_type: varchar
           - name: end_station_name
+            description: 'Nombre legible de la station de fin.'
             data_type: varchar
           - name: end_station_id
+            description: 'ID de la station de fin.'
             data_type: varchar
           - name: start_lat
+            description: 'Latitud de inicio en formato string.'
             data_type: varchar
           - name: start_lng
+            description: 'Longitud de inicio en formato string.'
             data_type: varchar
           - name: end_lat
+            description: 'Latitud de fin en formato string.'
             data_type: varchar
           - name: end_lng
+            description: 'Longitud de fin en formato string.'
             data_type: varchar
           - name: member_casual
+            description: 'Tipo de usuario raw (member, casual, otros).'
             data_type: varchar
           - name: source_file
+            description: 'Nombre del CSV de origen para trazabilidad.'
             data_type: varchar
             data_tests:
               - not_null
           - name: load_ts
+            description: 'Timestamp de ingesta a bronze. Cursor incremental aguas abajo.'
             data_type: timestamp_ntz
             data_tests:
               - not_null
@@ -61,38 +76,53 @@ sources:
         description: 'Viajes raw de New York Manhattan (COPY semanal S3 publico 2024-202603 + stage interno 202604+).'
         columns:
           - name: ride_id
+            description: 'PK natural del viaje. NULL como warn (basura de Citi Bike).'
             data_type: varchar
             data_tests:
               - not_null: { config: { severity: warn } }
           - name: rideable_type
+            description: 'Tipo de bici raw (classic_bike, electric_bike, otros).'
             data_type: varchar
           - name: started_at
+            description: 'Timestamp de inicio del viaje en formato string.'
             data_type: varchar
           - name: ended_at
+            description: 'Timestamp de fin del viaje en formato string.'
             data_type: varchar
           - name: start_station_name
+            description: 'Nombre legible de la station de inicio.'
             data_type: varchar
           - name: start_station_id
+            description: 'ID de la station de inicio.'
             data_type: varchar
           - name: end_station_name
+            description: 'Nombre legible de la station de fin.'
             data_type: varchar
           - name: end_station_id
+            description: 'ID de la station de fin.'
             data_type: varchar
           - name: start_lat
+            description: 'Latitud de inicio en formato string.'
             data_type: varchar
           - name: start_lng
+            description: 'Longitud de inicio en formato string.'
             data_type: varchar
           - name: end_lat
+            description: 'Latitud de fin en formato string.'
             data_type: varchar
           - name: end_lng
+            description: 'Longitud de fin en formato string.'
             data_type: varchar
           - name: member_casual
+            description: 'Tipo de usuario raw (member, casual, otros).'
             data_type: varchar
           - name: source_file
+            description: 'Nombre del CSV de origen para trazabilidad.'
             data_type: varchar
             data_tests:
               - not_null
           - name: load_ts
+            description: 'Timestamp de ingesta a bronze. Cursor incremental aguas abajo.'
             data_type: timestamp_ntz
             data_tests:
               - not_null

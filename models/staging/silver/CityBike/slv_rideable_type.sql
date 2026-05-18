@@ -1,4 +1,6 @@
--- slv_rideable_type: lookup de tipos de bicicleta CityBike (classic, electric).
+-- slv_rideable_type: lookup de tipos de bicicleta CityBike (classic, electric). Materializado table.
+
+{{ config(materialized='table') }}
 
 with distinct_types as (
     select distinct rideable_type
@@ -6,10 +8,7 @@ with distinct_types as (
 )
 
 select
-    -- PK
     {{ dbt_utils.generate_surrogate_key(['rideable_type']) }} as rideable_type_code,
-
-    -- atributos
     rideable_type,
     case rideable_type
         when 'classic_bike'  then 'Bicicleta clasica (mecanica)'

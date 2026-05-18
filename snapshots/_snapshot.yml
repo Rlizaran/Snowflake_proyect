@@ -11,33 +11,45 @@ snapshots:
         data_tests:
           - not_null
       - name: station_id
+        description: 'Station NOAA (formato USW#########). Normalizado a upper + trim.'
         data_tests:
           - not_null
       - name: observation_date
+        description: 'Fecha de la observacion meteo. Cast a date desde el YYYYMMDD raw.'
         data_tests:
           - not_null
       - name: element
+        description: 'Elemento meteo NOAA. Filtrado a los 8 elementos del proyecto.'
         data_tests:
           - not_null
           - accepted_values:
               arguments: { values: ['TMAX','TMIN','PRCP','SNOW','AWND','SNWD','WSF2','WSF5'] }
       - name: data_value
+        description: 'Valor escalado a unidad real (Celsius / mm / m/s). En bronze NOAA viene en decimas para TMAX/TMIN/PRCP/AWND/WSF2/WSF5; el snapshot aplica /10.'
       - name: q_flag
+        description: 'Quality flag NOAA raw (1 char). Se conserva para FK a slv_quality_flag.'
       - name: q_flag_category
+        description: 'Categoria derivada de q_flag. Necesaria aqui porque la SCD2 strategy check la usa en check_cols.'
         data_tests:
           - not_null
           - accepted_values:
               arguments: { values: ['OK','SUSPECT','INVALID','PROCESSING','METADATA','UNKNOWN'] }
       - name: obs_time
+        description: 'Hora de observacion en formato HHMM (0000-2359). Sentinel 2400 = no reportado en bronze.'
       - name: source_file
+        description: 'Linaje: nombre del CSV NOAA de bronze.'
       - name: load_ts
+        description: 'Linaje: timestamp de carga a bronze.'
       - name: dbt_scd_id
+        description: 'PK tecnica del snapshot. Unica por version.'
         data_tests:
           - unique:  { config: { severity: error } }
           - not_null
       - name: dbt_updated_at
+        description: 'Timestamp de la ultima vez que dbt toco la fila (INSERT o SET dbt_valid_to).'
       - name: dbt_valid_from
+        description: 'Timestamp en que esta version paso a ser vigente.'
         data_tests:
           - not_null
       - name: dbt_valid_to
-        description: 'NULL = version vigente. NOT NULL = reemplazada.'
+        description: 'NULL = version vigente. NOT NULL = reemplazada por una version mas nueva (timestamp de cierre).'

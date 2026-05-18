@@ -1,4 +1,6 @@
--- slv_city: lookup de ciudades CityBike (Manhattan, Jersey City).
+-- slv_city: lookup de ciudades CityBike (Manhattan, Jersey City). Materializado table.
+
+{{ config(materialized='table') }}
 
 with city_table as (
     select distinct city
@@ -6,9 +8,6 @@ with city_table as (
 )
 
 select
-    -- PK
     {{ dbt_utils.generate_surrogate_key(['city']) }} as city_id,
-
-    -- atributo
     city
 from city_table

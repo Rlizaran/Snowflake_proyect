@@ -43,15 +43,10 @@ weather as (
 )
 
 select
-    -- PK
     {{ dbt_utils.generate_surrogate_key(['dt.trip_date', 'dt.city_id']) }} as trip_weather_id,
-
-    -- FKs
     dt.trip_date,
     dt.city_id,
     cs.station_weather_id,
-
-    -- metricas viajes
     dt.n_trips,
     dt.n_trips_member,
     dt.n_trips_casual,
@@ -59,8 +54,6 @@ select
     dt.n_trips_electric,
     dt.avg_duration_min,
     dt.avg_distance_km,
-
-    -- metricas clima
     w.temp_max_c,
     w.temp_min_c,
     w.temp_avg_c,
@@ -68,10 +61,9 @@ select
     w.snowfall_mm,
     w.snow_depth_mm,
     w.weather_category
-
 from daily_trips dt
-join station_weather cs 
+join station_weather cs
     on dt.city_id = cs.city_id
-left join weather  w  
+left join weather w
     on w.station_weather_id = cs.station_weather_id
     and w.observation_date  = dt.trip_date

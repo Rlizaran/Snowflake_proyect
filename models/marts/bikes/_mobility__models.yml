@@ -1,0 +1,175 @@
+# Capa Gold marts/bikes (schema MOBILITY): facts CityBike + dims mono-dominio.
+
+version: 2
+
+models:
+  - name: fct_trips_daily
+    description: 'Fact agregado (trip_date x city x bike x user). Input para PBI y ML.FORECAST.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [daily_trip_id]
+      - type: not_null
+        columns: [daily_trip_id]
+    columns:
+      - name: daily_trip_id
+        description: 'PK surrogate MD5(trip_date, city_id, rideable_type_code, user_type_code). Granularidad del fact.'
+        data_type: varchar
+        data_tests:
+          - unique
+      - name: trip_date
+        description: 'Fecha del viaje. FK a dim_fecha.'
+        data_type: date
+      - name: city_id
+        description: 'FK a dim_city.'
+        data_type: varchar
+      - name: rideable_type_code
+        description: 'FK a dim_rideable_bike.'
+        data_type: varchar
+      - name: user_type_code
+        description: 'FK a dim_user_type.'
+        data_type: varchar
+      - name: series_key
+        description: 'Concat city_id||rideable_type_code||user_type_code. Series identifier para ML.FORECAST (8 series totales: 2 cities x 2 bikes x 2 users).'
+        data_type: varchar
+      - name: n_trips
+        description: 'Numero total de viajes en el grupo.'
+        data_type: "number(38, 0)"
+      - name: avg_duration_min
+        description: 'Duracion promedio (minutos) en el grupo.'
+        data_type: "number(38, 2)"
+      - name: total_duration_min
+        description: 'Suma de duraciones (minutos) en el grupo.'
+        data_type: "number(38, 2)"
+      - name: min_duration_min
+        description: 'Duracion minima observada (minutos).'
+        data_type: "number(38, 2)"
+      - name: max_duration_min
+        description: 'Duracion maxima observada (minutos).'
+        data_type: "number(38, 2)"
+      - name: median_duration_min
+        description: 'Mediana de duracion (minutos).'
+        data_type: "number(38, 2)"
+      - name: avg_distance_km
+        description: 'Distancia promedio (km) en el grupo. Excluye round-trips y outliers (distance_in_km NULL en slv_trip).'
+        data_type: "number(38, 2)"
+      - name: total_distance_km
+        description: 'Suma de distancias (km) en el grupo.'
+        data_type: float
+      - name: min_distance_km
+        description: 'Distancia minima observada (km).'
+        data_type: float
+      - name: max_distance_km
+        description: 'Distancia maxima observada (km).'
+        data_type: float
+      - name: median_distance_km
+        description: 'Mediana de distancia (km).'
+        data_type: "number(38, 2)"
+
+  - name: fct_trips
+    description: 'Fact gold por viaje: 1 row por ride. Passthrough de slv_trip con FKs a dims.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [ride_id]
+      - type: not_null
+        columns: [ride_id, trip_date]
+    columns:
+      - name: ride_id
+        description: 'PK natural del viaje.'
+        data_type: varchar
+      - name: trip_date
+        description: 'Fecha del viaje. FK a dim_fecha.'
+        data_type: date
+      - name: city_id
+        description: 'FK a dim_city.'
+        data_type: varchar
+      - name: rideable_type_code
+        description: 'FK a dim_rideable_bike.'
+        data_type: varchar
+      - name: user_type_code
+        description: 'FK a dim_user_type.'
+        data_type: varchar
+      - name: start_station_id
+        description: 'FK a dim_station. Station de inicio del viaje.'
+        data_type: varchar
+      - name: end_station_id
+        description: 'FK a dim_station. Station de fin del viaje.'
+        data_type: varchar
+      - name: trip_duration_min
+        description: 'Duracion del viaje en minutos.'
+        data_type: "number(8, 2)"
+      - name: distance_in_km
+        description: 'Distancia en linea recta (km). NULL si round-trip o outlier > 500 km.'
+        data_type: float
+
+  - name: dim_user_type
+    description: 'Tipos de usuario CityBike. Passthrough de slv_user_type.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [user_type_code]
+      - type: not_null
+        columns: [user_type_code]
+    columns:
+      - name: user_type_code
+        description: 'PK surrogate MD5 de member_casual.'
+        data_type: varchar
+      - name: member_casual
+        description: 'Codigo legible: member o casual.'
+        data_type: varchar
+      - name: description
+        description: 'Descripcion del tipo de usuario (e.g. "Suscriptor anual / mensual").'
+        data_type: varchar
+      - name: is_subscriber
+        description: 'TRUE si member_casual = member. Flag listo para BI.'
+        data_type: boolean
+
+  - name: dim_rideable_bike
+    description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [rideable_type_code]
+      - type: not_null
+        columns: [rideable_type_code]
+    columns:
+      - name: rideable_type_code
+        description: 'PK surrogate MD5 de rideable_type.'
+        data_type: varchar
+      - name: rideable_type
+        description: 'Codigo legible: classic_bike o electric_bike.'
+        data_type: varchar
+      - name: description
+        description: 'Descripcion del tipo (e.g. "Bicicleta clasica (mecanica)").'
+        data_type: varchar
+      - name: is_electric
+        description: 'TRUE si rideable_type = electric_bike. Flag listo para BI.'
+        data_type: boolean
+
+  - name: dim_station
+    description: 'Estaciones CityBike. Passthrough de slv_station.'
+    config:
+      contract: { enforced: true }
+    constraints:
+      - type: primary_key
+        columns: [station_id]
+      - type: not_null
+        columns: [station_id]
+    columns:
+      - name: station_id
+        description: 'PK natural de la station CityBike (cubre NY + JC).'
+        data_type: varchar
+      - name: canonical_name
+        description: 'Nombre canonico (el mas frecuente por station_id) derivado de slv_trip.'
+        data_type: varchar
+      - name: canonical_lat
+        description: 'Latitud canonica redondeada a 4 decimales (~10m precision).'
+        data_type: "number(10, 4)"
+      - name: canonical_lng
+        description: 'Longitud canonica redondeada a 4 decimales (~10m precision).'
+        data_type: "number(10, 4)"

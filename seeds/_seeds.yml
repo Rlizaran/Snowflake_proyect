@@ -22,3 +22,19 @@ seeds:
         description: 'Codigo del estado US (2 chars)'
       - name: station_name
       - name: city
+
+  - name: city_weather_station_map
+    description: >
+      Mapping de project_city (CityBike) a station_weather_id (NOAA).
+      Editar este CSV para anadir nuevas ciudades al pipeline.
+    columns:
+      - name: project_city
+        description: 'Nombre de la ciudad CityBike (Manhattan, Jersey City, ...).'
+        data_tests:
+          - unique
+          - not_null
+      - name: station_weather_id
+        description: 'ID de la station NOAA asociada a la ciudad.'
+        data_tests:
+          - unique
+          - not_null
