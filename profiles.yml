@@ -12,5 +12,5 @@ snowflake_proyect:
       warehouse: "{{ env_var('SF_WAREHOUSE', 'WH_NYCBIKE_DEV') }}"
       database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_SILVER"
       schema: "{{ env_var('SF_SCHEMA', 'dbt_rlizaran') }}"
-      threads: 4
+      threads: 2
       client_session_keep_alive: false

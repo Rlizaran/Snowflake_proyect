@@ -39,7 +39,7 @@ models:
         data_type: "number(8, 2)"
       - name: weather_category
         data_type: varchar
-        data_tests:
+        tests:
           - accepted_values:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
@@ -157,6 +157,9 @@ unit_tests:
       - TMAX < 5 -> cold
       - resto -> mild
     model: fct_weather_daily
+    overrides:
+      macros:
+        is_incremental: true
     given:
       - input: ref('slv_weather_observation')
         rows:
@@ -181,6 +184,8 @@ unit_tests:
       - input: ref('dim_station_weather')
         rows:
           - { station_weather_id: 'X', city_id: 'CITY_TEST' }
+      - input: this
+        rows: []
     expect:
       rows:
         - { observation_date: '2024-01-01', weather_category: 'rainy' }
