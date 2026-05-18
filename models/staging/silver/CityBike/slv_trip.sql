@@ -12,7 +12,7 @@
 with trips as (
     select * from {{ ref('stg_CityBike__citybike_trips') }}
     {% if is_incremental() %}
-        where load_ts > (select max(load_ts) from {{ this }})
+        where load_ts > (select coalesce(max(load_ts), '1900-01-01'::timestamp_ntz) from {{ this }})
     {% endif %}
 ),
 
