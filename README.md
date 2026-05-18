@@ -7,13 +7,13 @@ Pipeline medallion (Bronze → Silver → Gold) sobre **Citi Bike NY + Jersey Ci
 ERDs de Bronze, Silver y Gold.
 
 - [`Snowflake_proyect/photos/Bronze.png`](Snowflake_proyect\photos\Bronze.png)
-- [`Snowflake_proyect/photos/Silver.png`](Snowflake_proyect\photos\Silver.png)
+- [`Snowflake_proyect/photos/Silver.png`](Snowflake_proyect\photos\Silver.JPG)
 - [`Snowflake_proyect/photos/Gold.png`](Snowflake_proyect\photos\Gold.png)
 
 | Capa   |                Diagrama                   |              Capturas            |
 |--------|-------------------------------------------|----------------------------------|
 | Bronze | ver `Snowflake_proyect/photos/Bronze.png` | ![Bronze ERD](photos/Bronze.png) |
-| Silver | ver `Snowflake_proyect/photos/Silver.png` | ![Silver ERD](photos/Silver.png) |
+| Silver | ver `Snowflake_proyect/photos/Silver.png` | ![Silver ERD](photos/Silver.JPG) |
 | Gold   | ver `Snowflake_proyect/photos/Gold.png`   | ![Gold ERD](photos/Gold.png)     |
 
 Los `.dbml` en `photos/` se pegan tal cual en https://dbdiagram.io. El sufijo `(table)` o `(view)` del nombre indica la materializacion dbt — solo aparece en el diagrama.
