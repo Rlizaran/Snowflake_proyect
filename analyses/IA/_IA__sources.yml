@@ -2,6 +2,8 @@ version: 2
 
 sources:
   - name: snowflake_ia
+    database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
+    schema: IA
     description: "Esquema que contiene las tablas y resultados generados por los modelos de Machine Learning y Forecasting nativos de Snowflake."
     tables:
       - name: pronostico_final

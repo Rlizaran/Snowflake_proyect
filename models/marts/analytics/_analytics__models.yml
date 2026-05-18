@@ -70,5 +70,5 @@ models:
         description: 'Profundidad de nieve acumulada (mm).'
         data_type: "number(8, 2)"
       - name: weather_category
-        description: 'Clasificacion meteorologica del dia (rainy/snowy/hot/cold/mild). Heredada de fct_weather_daily.'
+        description: '{{ doc("weather_category_rules") }}'
         data_type: varchar

@@ -1,7 +1,6 @@
-{{ config(
-    materialized='view',
-    schema='analytics'
-) }}
+-- rep_top_forecast_trips_monthly: pico mensual (top-1) de viajes predichos por ciudad. Override a view.
+
+{{ config(materialized='view') }}
 
 with forecast_base as (
     select * from {{ ref('fct_forecast_trips') }}

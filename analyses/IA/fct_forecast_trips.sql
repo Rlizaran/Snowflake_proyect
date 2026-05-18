@@ -1,7 +1,4 @@
-{{ config(
-    materialized='table',
-    schema='analytics'
-) }}
+-- fct_forecast_trips: forecast Cortex ML denormalizado contra dims gold (city, bike, user, fecha).
 
 with raw_forecast as (
     select * from {{ source('snowflake_ia', 'pronostico_final') }}

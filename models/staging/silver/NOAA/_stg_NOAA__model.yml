@@ -81,7 +81,7 @@ models:
         description: 'Elevacion sobre el nivel del mar, en metros.'
 
   - name: slv_weather_element
-    description: 'Lookup de elementos meteo NOAA GHCN-Daily. PK establecida aqui.'
+    description: '{{ doc("weather_elements") }}'
     columns:
       - name: element_code
         description: 'PK del elemento (TMAX, TMIN, PRCP, SNOW, SNWD, AWND, WSF2, WSF5).'
@@ -97,7 +97,7 @@ models:
               arguments: { values: ['celsius','mm','m/s'] }
 
   - name: slv_quality_flag
-    description: 'Lookup normalizado de q_flag NOAA. PK y categoria establecidos aqui.'
+    description: '{{ doc("q_flag_codes") }}'
     columns:
       - name: q_flag
         description: 'PK natural: codigo de un caracter publicado por NOAA. Vacio ("") indica valor limpio (OK).'

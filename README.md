@@ -33,7 +33,7 @@ Gold está dividido en 4 dominios — cada uno con su propio schema en Snowflake
 - **CORE** — dims compartidos por más de un dominio (`dim_fecha`, `dim_city`).
 - **MOBILITY** — todo lo del lado CityBike (facts de viajes + dims específicas).
 - **CLIMA** — todo lo del lado NOAA (facts de clima + dims meteo).
-- **ANALYTICS** — facts cross-dominio que combinan MOBILITY + CLIMA.
+- **ANALYTICS** — facts cross-dominio que combinan MOBILITY + CLIMA, mas la capa IA (forecast Cortex denormalizado contra dims).
 
 ```
 BRONZE  ({DEV|PRO}_CITYBIKE_BRONZE)            SILVER  ({DEV|PRO}_CITYBIKE_SILVER)           GOLD  ({DEV|PRO}_CITYBIKE_GOLD)
@@ -53,9 +53,9 @@ NOAA.NOAA_RAW_YEAR                             CITYBIKE.slv_rideable_type (table
                                                intermediate.stg_NOAA__noaa_raw_year          CLIMA.fct_weather_daily    (table, incr.)
                                                   ↑ view sobre version vigente del SCD2      CLIMA.fct_noaa_corrections (table + cluster)
                                                NOAA.slv_weather_observation (view)
-                                               NOAA.slv_weather_station    (table)           ANALYTICS.fct_trips_weather (table, incr.)
-                                               NOAA.slv_weather_element    (view)
-                                               NOAA.slv_quality_flag       (view, lookup)
+                                               NOAA.slv_weather_station    (table)           ANALYTICS.fct_trips_weather       (table, incr.)
+                                               NOAA.slv_weather_element    (view)            ANALYTICS.fct_forecast_trips      (table, IA)
+                                               NOAA.slv_quality_flag       (view, lookup)    ANALYTICS.rep_top_forecast_monthly (view, IA)
 ```
 
 ## Bronze
@@ -142,7 +142,16 @@ Mapping carpeta → schema (configurado en `dbt_project.yml`):
 
 | Modelo | Tipo | Grano | Notas |
 |---|---|---|---|
-| `fct_trips_weather` | fact (table, incr. MERGE) | `trip_date × city` | Cruza trips agregados (`n_trips_member/casual/classic/electric`) con clima (`temp_max/min/avg_c`, `precipitation_mm`, `snow_mm`, `weather_category`). Mapeo Manhattan→`USW00094728`, JC→`USW00014734`. Join nuevo a nivel gold: `city_id → station_weather_id`. |
+| `fct_trips_weather` | fact (table, incr. MERGE) | `trip_date × city` | Cruza trips agregados (`n_trips_member/casual/classic/electric`) con clima (`temp_max/min/avg_c`, `precipitation_mm`, `snow_mm`, `weather_category`). Mapeo Manhattan→`USW00094728`, JC→`USW00014734` via seed `city_weather_station_map`. Join nuevo a nivel gold: `city_id → station_weather_id`. |
+
+### `analyses/IA/` — schema `ANALYTICS` (forecast Cortex ML)
+
+| Modelo | Tipo | Grano | Notas |
+|---|---|---|---|
+| `fct_forecast_trips` | fact (table) | `trip_date × city × bike × user` | Forecast Cortex denormalizado contra dims. Lee de `source('snowflake_ia', 'pronostico_final')` (tabla creada manualmente con `ML.FORECAST` en Snowflake) y joinea con `dim_city`, `dim_rideable_bike`, `dim_user_type`, `dim_fecha`. `series_key` (city_id\|bike\|user) se descompone en 3 columnas legibles. |
+| `rep_top_forecast_trips_monthly` | report (view) | `city × mes` | Top-1 dia con mayor `predicted_n_trips` por (city, nombre_mes). Listo para visual "mejor dia esperado del mes" en Power BI. |
+
+La carpeta `analyses/IA/` esta añadida a `model-paths` en `dbt_project.yml` (sec `IA:`). Los modelos se construyen con `dbt run`. La source `snowflake_ia.pronostico_final` apunta al schema `IA` dentro de `*_CITYBIKE_GOLD`, donde el script manual de forecast deja la tabla cruda.
 
 Los aggregados (`fct_trips_daily`, `fct_trips_weather`, `fct_weather_daily`) usan ventana incremental de **7 días** para absorber late-arriving data. Para reprocesar correcciones NOAA en historia profunda: `dbt run --full-refresh --select fct_trips_weather fct_weather_daily`.
 
@@ -154,10 +163,11 @@ Los aggregados (`fct_trips_daily`, `fct_trips_weather`, `fct_weather_daily`) usa
 
 | Tipo | Contract | `on_schema_change` |
 |---|---|---|
-| Fact incremental (slv_trip, fct_trips, fct_trips_daily, fct_trips_weather, fct_weather_daily) | enforced | `fail` — schema drift rompe el build |
+| Fact incremental (slv_trip, fct_trips, fct_trips_daily, fct_trips_weather, fct_weather_daily) | enforced | `append_new_columns` — nuevas columnas se añaden sin full refresh |
 | Fact table no-incremental (fct_noaa_corrections) | enforced | n/a (no aplica a table) |
-| Dim table (todas) | enforced | n/a (no aplica a table) |
-| Incremental no-fact (stg_CityBike) | no | `append_new_columns` — flujo flexible |
+| Dim table (todas excepto dim_fecha) | enforced | n/a (no aplica a table) |
+| `dim_fecha` | sin contract (date_spine derivado) | n/a |
+| Incremental no-fact (stg_CityBike) | no | `append_new_columns` |
 
 PKs por modelo:
 
@@ -248,25 +258,61 @@ Ambas reusan las mismas mesas Snowflake — no entran en conflicto.
 
 `dbt build` engloba snapshot → models → tests en orden DAG. Corta al primer error.
 
-## ML.FORECAST (futuro)
+## ML.FORECAST con Snowflake Cortex
 
-`fct_trips_daily` tiene la forma necesaria:
-- TIMESTAMP = `trip_date`
-- TARGET = `n_trips`
-- SERIES = `series_key` (concat `city_id|rideable_type_code|user_type_code` → 8 series)
+El flujo combina un paso manual de entrenamiento+forecast en Snowflake con dos modelos dbt downstream que denormalizan y reportan.
 
-Ejemplo:
+### 1. Paso manual en Snowflake — `sql/Forecast.sql`
+
+Limpia `fct_trips_daily`, prepara `IA_PREP_DATA`, crea el modelo Cortex y genera `PRONOSTICO_FINAL`:
+
 ```sql
-CREATE OR REPLACE SNOWFLAKE.ML.FORECAST forecast_trips_30d(
-    INPUT_DATA       => TABLE(PRO_CITYBIKE_GOLD.MOBILITY.FCT_TRIPS_DAILY),
-    SERIES_COLNAME   => 'series_key',
-    TIMESTAMP_COLNAME=> 'trip_date',
-    TARGET_COLNAME   => 'n_trips'
+USE DATABASE PRO_CITYBIKE_GOLD;
+USE SCHEMA   IA;
+
+-- Vista limpia para entrenar (descarta outliers de duracion / distancia)
+CREATE OR REPLACE TABLE v_trips_cleaned AS
+SELECT * FROM PRO_CITYBIKE_GOLD.MOBILITY.FCT_TRIPS_DAILY
+WHERE MIN_DURATION_MIN > 0 AND MAX_DURATION_MIN < 240
+  AND MIN_DISTANCE_KM > 0 AND MAX_DISTANCE_KM < 30;
+
+CREATE OR REPLACE TABLE IA_PREP_DATA AS
+SELECT TRIP_DATE::TIMESTAMP_NTZ AS TRIP_DATE, SERIES_KEY, N_TRIPS::FLOAT AS N_TRIPS
+FROM V_TRIPS_CLEANED WHERE N_TRIPS IS NOT NULL;
+
+-- Modelo Cortex sobre las 10 series con mas datos
+CREATE OR REPLACE SNOWFLAKE.ML.FORECAST forecast_test(
+    INPUT_DATA       => TABLE(SELECT * FROM IA_PREP_DATA
+                              WHERE SERIES_KEY IN (SELECT SERIES_KEY FROM IA_PREP_DATA
+                                                   GROUP BY 1 ORDER BY COUNT(*) DESC LIMIT 10)),
+    SERIES_COLNAME   => 'SERIES_KEY',
+    TIMESTAMP_COLNAME=> 'TRIP_DATE',
+    TARGET_COLNAME   => 'N_TRIPS'
 );
-CALL forecast_trips_30d!FORECAST(FORECASTING_PERIODS => 30);
+
+CALL FORECAST_TEST!FORECAST(FORECASTING_PERIODS => 30);
+
+-- Captura el resultado del CALL en una tabla fisica para que dbt la pueda leer
+CREATE OR REPLACE TABLE PRONOSTICO_FINAL AS
+SELECT * FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
 ```
 
-Si se necesita meter exógenas (temp, prcp) se pasa a un modelo Python en dbt (`materialized='python'`).
+`fct_trips_daily.series_key` ya tiene el formato `city_id|rideable_type_code|user_type_code` → 8 series posibles (2 city × 2 bike × 2 user).
+
+### 2. Modelos dbt — `analyses/IA/`
+
+| Modelo | Materializacion | Que hace |
+|---|---|---|
+| `fct_forecast_trips` | table en `ANALYTICS` | Lee `source('snowflake_ia', 'pronostico_final')`, descompone `SERIES` en 3 columnas (city_id, rideable_type_code, user_type_code), join a `dim_city`, `dim_rideable_bike`, `dim_user_type`, `dim_fecha` para obtener nombres legibles. Filtra forecasts < 2027-01-01. |
+| `rep_top_forecast_trips_monthly` | view en `ANALYTICS` | Pico mensual: `row_number() over (partition by city, nombre_mes order by predicted_n_trips desc) = 1`. Solo `Manhattan` y `Jersey City`. |
+
+Build: `dbt run --select fct_forecast_trips rep_top_forecast_trips_monthly` (o `dbt build`).
+
+### 3. Re-entrenamiento
+
+Cada vez que cambias `fct_trips_daily` significativamente (e.g. tras `--full-refresh`), conviene volver a correr `Forecast.sql` para regenerar `PRONOSTICO_FINAL` con los datos actualizados. Despues `dbt run` propaga al `fct_forecast_trips`.
+
+Si en el futuro se quieren meter variables exogenas (temp, prcp) → cambiar a un modelo Python en dbt (`materialized='python'`) que llame a un Cortex con `INPUT_DATA` enriquecido desde `fct_trips_weather`.
 
 ## Estructura del repo
 
@@ -284,7 +330,14 @@ Snowflake_proyect/
 │   ├── extract_jc_to_stage.py               # ingestor idempotente JC + NY (202604+) -> stages internos
 │   └── us_state_weather.py                  # generador del seed weather_station_us.csv
 │
-├── analyses/                                # vacio (placeholder dbt)
+├── analyses/                                # Power BI files + IA models (analyses/IA esta en model-paths)
+│   ├── Bike Project.pbix
+│   ├── Final_Analisys.pbix
+│   └── IA/                                  # schema ANALYTICS, mismo schema que fct_trips_weather
+│       ├── _IA__models.yml
+│       ├── _IA__sources.yml                 # snowflake_ia.pronostico_final (PRO_CITYBIKE_GOLD.IA.PRONOSTICO_FINAL)
+│       ├── fct_forecast_trips.sql           # table, denormaliza forecast Cortex vs dims
+│       └── rep_top_forecast_trips_monthly.sql  # view, top-1 dia por (city, mes)
 │
 ├── macros/
 │   ├── bronze_silver_count_diff.sql         # macro test bronze vs silver
