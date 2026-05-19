@@ -1,0 +1,9 @@
+selectors:
+  - name: mantenimiento_noaa
+    definition:
+      union:
+        - method: fqn
+          value: fct_weather_daily
+          parents: true
+        - method: fqn
+          value: fct_trips_weather
