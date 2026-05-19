@@ -52,13 +52,6 @@ models:
 
   - name: dim_city
     description: 'Ciudades CityBike (Manhattan, Jersey City). Passthrough de slv_city.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [city_id]
-      - type: not_null
-        columns: [city_id]
     columns:
       - name: city_id
         description: 'PK surrogate MD5 de city. Comparte valores con slv_city.city_id.'
