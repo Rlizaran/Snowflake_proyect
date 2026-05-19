@@ -75,7 +75,7 @@ models:
 
     IA:
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
-      +schema: ANALYTICS
+      +schema: IA
       +materialized: table
 
 # ============================================================================
