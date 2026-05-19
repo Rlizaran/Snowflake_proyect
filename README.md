@@ -252,7 +252,7 @@ Ambas reusan las mismas mesas Snowflake — no entran en conflicto.
 | Job | Comando | Schedule |
 |---|---|---|
 | **Build mensual** | `dbt build` | día 28, ~05:00 NY (tras NOAA del task chain) |
-| **Full refresh trimestral** | `dbt build --full-refresh` | primer día 28 del trimestre, ~06:00 NY |
+| **Full refresh trimestral** | `dbt build --selector mantenimiento_noaa --full-refresh` | primer día 28 del trimestre, ~06:00 NY |
 | **Source freshness diario** | `dbt source freshness` | diario ~09:00 NY |
 | **Docs** (opcional) | `dbt docs generate` | tras el build mensual o el full refresh trimestral |
 
@@ -303,8 +303,8 @@ SELECT * FROM TABLE(RESULT_SCAN(LAST_QUERY_ID()));
 
 | Modelo | Materializacion | Que hace |
 |---|---|---|
-| `fct_forecast_trips` | table en `ANALYTICS` | Lee `source('snowflake_ia', 'pronostico_final')`, descompone `SERIES` en 3 columnas (city_id, rideable_type_code, user_type_code), join a `dim_city`, `dim_rideable_bike`, `dim_user_type`, `dim_fecha` para obtener nombres legibles. Filtra forecasts < 2027-01-01. |
-| `rep_top_forecast_trips_monthly` | view en `ANALYTICS` | Pico mensual: `row_number() over (partition by city, nombre_mes order by predicted_n_trips desc) = 1`. Solo `Manhattan` y `Jersey City`. |
+| `fct_forecast_trips` | table en `IA` | Lee `source('snowflake_ia', 'pronostico_final')`, descompone `SERIES` en 3 columnas (city_id, rideable_type_code, user_type_code), join a `dim_city`, `dim_rideable_bike`, `dim_user_type`, `dim_fecha` para obtener nombres legibles. Filtra forecasts < 2027-01-01. |
+| `rep_top_forecast_trips_monthly` | view en `IA` | Pico mensual: `row_number() over (partition by city, nombre_mes order by predicted_n_trips desc) = 1`. Solo `Manhattan` y `Jersey City`. |
 
 Build: `dbt run --select fct_forecast_trips rep_top_forecast_trips_monthly` (o `dbt build`).
 
@@ -320,6 +320,7 @@ Si en el futuro se quieren meter variables exogenas (temp, prcp) → cambiar a u
 Snowflake_proyect/
 ├── .gitignore
 ├── README.md
+├── selectors.yml                            # shorcut for dbt build --select +fct_weather_daily fct_trips_weather --full-refresh
 ├── dbt_project.yml                          # config dbt (DBs por env, schemas por capa/dominio)
 ├── profiles.yml                             # perfil Snowflake (env vars)
 ├── packages.yml                             # dbt_utils, codegen, dbt_expectations, dbt_date
@@ -368,28 +369,28 @@ Snowflake_proyect/
 │   │           ├── slv_weather_element.sql         # view
 │   │           ├── slv_weather_observation.sql     # view (fact long)
 │   │           └── slv_weather_station.sql         # table
-│   └── marts/
-│       ├── core/                                   # schema CORE — dims compartidos
-│       │   ├── _core__model.yml
-│       │   ├── dim_fecha.sql                       # date_spine anclado a NOAA
-│       │   └── dim_city.sql
-│       ├── bikes/                                  # schema MOBILITY — CityBike
-│       │   ├── _mobility__models.yml
-│       │   ├── dim_rideable_bike.sql
-│       │   ├── dim_station.sql
-│       │   ├── dim_user_type.sql
-│       │   ├── fct_trips.sql                       # table incr. + cluster year(trip_date)
-│       │   └── fct_trips_daily.sql                 # table incr.
-│       ├── clima/                                  # schema CLIMA — NOAA
-│       │   ├── _clima__models.yml
-│       │   ├── dim_station_weather.sql
-│       │   ├── dim_weather_element.sql
-│       │   ├── dim_quality_flag.sql
-│       │   ├── fct_weather_daily.sql               # table incr.
-│       │   └── fct_noaa_corrections.sql            # table + cluster year(observation_date)
-│       └── analytics/                              # schema ANALYTICS — cross-dominio
-│           ├── _analytics__models.yml
-│           └── fct_trips_weather.sql               # table incr.
+│   ├── marts/
+│   │   ├── core/                                   # schema CORE — dims compartidos
+│   │   │   ├── _core__model.yml
+│   │   │   ├── dim_fecha.sql                       # date_spine anclado a NOAA
+│   │   │   └── dim_city.sql
+│   │   ├── bikes/                                  # schema MOBILITY — CityBike
+│   │   │   ├── _mobility__models.yml
+│   │   │   ├── dim_rideable_bike.sql
+│   │   │   ├── dim_station.sql
+│   │   │   ├── dim_user_type.sql
+│   │   │   ├── fct_trips.sql                       # table incr. + cluster year(trip_date)
+│   │   │   └── fct_trips_daily.sql                 # table incr.
+│   │   ├── clima/                                  # schema CLIMA — NOAA
+│   │   │   ├── _clima__models.yml
+│   │   │   ├── dim_station_weather.sql
+│   │   │   ├── dim_weather_element.sql
+│   │   │   ├── dim_quality_flag.sql
+│   │   │   ├── fct_weather_daily.sql               # table incr.
+│   │   │   └── fct_noaa_corrections.sql            # table + cluster year(observation_date)
+│   │   └── analytics/                              # schema ANALYTICS — cross-dominio
+│   │       ├── _analytics__models.yml
+│   │       └── fct_trips_weather.sql               # table incr.
 │   ├── IA/                                         # schema ANALYTICS — Cortex ML downstream
 │   │   ├── _IA__models.yml
 │   │   ├── _IA__sources.yml                        # snowflake_ia.pronostico_final (PRO_CITYBIKE_GOLD.IA.PRONOSTICO_FINAL)
@@ -478,7 +479,7 @@ Orden SQL Snowflake (una sola vez por entorno):
 |---|---|---|---|
 | **Build mensual** | `dbt build && dbt docs generate` | día 28 ~05:00 NY | Pipeline normal post-bronze |
 | **Source freshness diario** | `dbt source freshness` | diario ~09:00 NY | Alerta de bronze stale |
-| **Full refresh periódico** | `dbt build --full-refresh && dbt docs generate` | día 28 cada 3-6 meses ~06:00 NY | Catch correcciones NOAA profundas |
+| **Full refresh periódico** | `dbt build --selector mantenimiento_noaa --full-refresh` | día 28 cada 3-6 meses ~06:00 NY | Catch correcciones NOAA profundas |
 
 ### Razones
 
@@ -486,7 +487,7 @@ Orden SQL Snowflake (una sola vez por entorno):
 
 **Source freshness diario** — independiente del build, lee solo `MAX(load_ts)` de los sources contra `warn_after 30d / error_after 40d`. Ejecución de ~10 segundos, casi gratis. Te enteras enseguida si un task de Snowflake falló en silencio y bronze quedó stale, sin esperar al día 28.
 
-**Full refresh trimestral o semestral** — los aggregates `fct_trips_daily`, `fct_trips_weather` y `fct_weather_daily` usan ventana incremental de **7 días**. Si NOAA publica correcciones SCD2 más allá de esa ventana, los aggregates no se actualizan automáticamente. El `--full-refresh` reconstruye los modelos incrementales desde cero, captura esas correcciones y limpia cualquier drift acumulado. El snapshot SCD2 no se borra (dbt lo protege del full-refresh por diseño) — solo se rebuildean los models downstream.
+**Full refresh trimestral o semestral** — los aggregates `fct_trips_weather` y `fct_weather_daily` usan ventana incremental de **7 días**. Si NOAA publica correcciones SCD2 más allá de esa ventana, los aggregates no se actualizan automáticamente. El `--full-refresh` reconstruye los modelos incrementales desde cero, captura esas correcciones y limpia cualquier drift acumulado. El snapshot SCD2 no se borra (dbt lo protege del full-refresh por diseño) — solo se rebuildean los models downstream.
 
 ### Notas operativas
 
