@@ -369,28 +369,28 @@ Snowflake_proyect/
 │   │           ├── slv_weather_element.sql         # view
 │   │           ├── slv_weather_observation.sql     # view (fact long)
 │   │           └── slv_weather_station.sql         # table
-│   └── marts/
-│       ├── core/                                   # schema CORE — dims compartidos
-│       │   ├── _core__model.yml
-│       │   ├── dim_fecha.sql                       # date_spine anclado a NOAA
-│       │   └── dim_city.sql
-│       ├── bikes/                                  # schema MOBILITY — CityBike
-│       │   ├── _mobility__models.yml
-│       │   ├── dim_rideable_bike.sql
-│       │   ├── dim_station.sql
-│       │   ├── dim_user_type.sql
-│       │   ├── fct_trips.sql                       # table incr. + cluster year(trip_date)
-│       │   └── fct_trips_daily.sql                 # table incr.
-│       ├── clima/                                  # schema CLIMA — NOAA
-│       │   ├── _clima__models.yml
-│       │   ├── dim_station_weather.sql
-│       │   ├── dim_weather_element.sql
-│       │   ├── dim_quality_flag.sql
-│       │   ├── fct_weather_daily.sql               # table incr.
-│       │   └── fct_noaa_corrections.sql            # table + cluster year(observation_date)
-│       └── analytics/                              # schema ANALYTICS — cross-dominio
-│           ├── _analytics__models.yml
-│           └── fct_trips_weather.sql               # table incr.
+│   ├── marts/
+│   │   ├── core/                                   # schema CORE — dims compartidos
+│   │   │   ├── _core__model.yml
+│   │   │   ├── dim_fecha.sql                       # date_spine anclado a NOAA
+│   │   │   └── dim_city.sql
+│   │   ├── bikes/                                  # schema MOBILITY — CityBike
+│   │   │   ├── _mobility__models.yml
+│   │   │   ├── dim_rideable_bike.sql
+│   │   │   ├── dim_station.sql
+│   │   │   ├── dim_user_type.sql
+│   │   │   ├── fct_trips.sql                       # table incr. + cluster year(trip_date)
+│   │   │   └── fct_trips_daily.sql                 # table incr.
+│   │   ├── clima/                                  # schema CLIMA — NOAA
+│   │   │   ├── _clima__models.yml
+│   │   │   ├── dim_station_weather.sql
+│   │   │   ├── dim_weather_element.sql
+│   │   │   ├── dim_quality_flag.sql
+│   │   │   ├── fct_weather_daily.sql               # table incr.
+│   │   │   └── fct_noaa_corrections.sql            # table + cluster year(observation_date)
+│   │   └── analytics/                              # schema ANALYTICS — cross-dominio
+│   │       ├── _analytics__models.yml
+│   │       └── fct_trips_weather.sql               # table incr.
 │   ├── IA/                                         # schema ANALYTICS — Cortex ML downstream
 │   │   ├── _IA__models.yml
 │   │   ├── _IA__sources.yml                        # snowflake_ia.pronostico_final (PRO_CITYBIKE_GOLD.IA.PRONOSTICO_FINAL)
