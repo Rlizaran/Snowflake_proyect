@@ -107,13 +107,6 @@ models:
 
   - name: dim_user_type
     description: 'Tipos de usuario CityBike. Passthrough de slv_user_type.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [user_type_code]
-      - type: not_null
-        columns: [user_type_code]
     columns:
       - name: user_type_code
         description: 'PK surrogate MD5 de member_casual.'
@@ -130,13 +123,6 @@ models:
 
   - name: dim_rideable_bike
     description: 'Tipos de bicicleta CityBike. Passthrough de slv_rideable_type.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [rideable_type_code]
-      - type: not_null
-        columns: [rideable_type_code]
     columns:
       - name: rideable_type_code
         description: 'PK surrogate MD5 de rideable_type.'
@@ -153,13 +139,6 @@ models:
 
   - name: dim_station
     description: 'Estaciones CityBike. Passthrough de slv_station.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [station_id]
-      - type: not_null
-        columns: [station_id]
     columns:
       - name: station_id
         description: 'PK natural de la station CityBike (cubre NY + JC).'

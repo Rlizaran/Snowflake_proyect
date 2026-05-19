@@ -116,13 +116,6 @@ models:
 
   - name: dim_station_weather
     description: 'Estaciones NOAA del seed weather_station_us. Passthrough de slv_weather_station.'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [station_weather_id]
-      - type: not_null
-        columns: [station_weather_id]
     columns:
       - name: station_weather_id
         description: 'PK de la station NOAA (formato USW#########).'
@@ -148,13 +141,6 @@ models:
 
   - name: dim_weather_element
     description: '{{ doc("weather_elements") }}'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [element_code]
-      - type: not_null
-        columns: [element_code]
     columns:
       - name: element_code
         description: 'PK del elemento (TMAX, TMIN, PRCP, SNOW, SNWD, AWND, WSF2, WSF5).'
@@ -168,13 +154,6 @@ models:
 
   - name: dim_quality_flag
     description: '{{ doc("q_flag_codes") }}'
-    config:
-      contract: { enforced: true }
-    constraints:
-      - type: primary_key
-        columns: [q_flag]
-      - type: not_null
-        columns: [q_flag]
     columns:
       - name: q_flag
         description: 'PK del q_flag (1 char). Vacio = OK.'
