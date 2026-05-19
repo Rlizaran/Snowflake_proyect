@@ -7,7 +7,7 @@ sources:
   - name: NOAA
     database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_BRONZE"
     schema: NOAA
-    description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC).'
+    description: 'Datos crudos NOAA GHCN-Daily by year (Manhattan + Newark/JC + resto de stations US).'
 
     config:
       freshness:
@@ -17,31 +17,41 @@ sources:
 
     tables:
       - name: noaa_raw_year
-        description: 'Observaciones meteorologicas raw en formato long (station, fecha, elemento).'
+        description: 'Observaciones meteorologicas raw en formato long (station, fecha, elemento). Todas las columnas VARCHAR para preservar el dato original; el escalado a unidad real ocurre en el snapshot.'
         columns:
           - name: station_id
+            description: 'ID de la station NOAA (formato USW#########). NULL como warn (basura del CSV).'
             data_type: varchar
             data_tests:
               - not_null: { config: { severity: warn } }
           - name: observation_date
+            description: 'Fecha de la observacion en formato string YYYYMMDD.'
             data_type: varchar
           - name: element
+            description: 'Codigo del elemento meteo NOAA (TMAX, TMIN, PRCP, SNOW, SNWD, AWND, WSF2, WSF5, otros).'
             data_type: varchar
           - name: data_value
+            description: 'Valor de la observacion en decimas (para TMAX/TMIN/PRCP/AWND/WSF2/WSF5) o unidad nativa. Se escala /10 en el snapshot.'
             data_type: varchar
           - name: m_flag
+            description: 'Measurement flag NOAA. No expuesto downstream (no aporta a BI ni historia SCD2).'
             data_type: varchar
           - name: q_flag
+            description: 'Quality flag NOAA (1 char). Se conserva downstream como FK a slv_quality_flag.'
             data_type: varchar
           - name: s_flag
+            description: 'Source flag NOAA. No expuesto downstream.'
             data_type: varchar
           - name: obs_time
+            description: 'Hora de observacion en formato HHMM (raw string). NULL si NOAA no la reporta.'
             data_type: varchar
           - name: source_file
+            description: 'Nombre del CSV NOAA de origen para trazabilidad.'
             data_type: varchar
             data_tests:
               - not_null
           - name: load_ts
+            description: 'Timestamp de ingesta a bronze.'
             data_type: timestamp_ntz
             data_tests:
               - not_null

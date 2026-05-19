@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: fct_forecast_trips
+    description: "Tabla de hechos de analítica denormalizada. Une el pronóstico final de IA con las dimensiones core (City, Rideable Bike, User Type y Fecha) filtrando fechas futuras coherentes."
+    columns:
+      - name: anio
+        description: "Año de la fecha predicha."
+        tests:
+          - not_null
+      - name: nombre_mes
+        description: "Nombre del mes de la predicción."
+        tests:
+          - not_null
+      - name: city
+        description: "Nombre de la ciudad asociada a la predicción (ej. Manhattan, Jersey City)."
+        tests:
+          - not_null
+      - name: rideable_type
+        description: "Tipo de bicicleta proyectada."
+      - name: member_casual
+        description: "Tipo de usuario (Member / Casual)."
+      - name: predicted_n_trips
+        description: "Cantidad de viajes diarios redondeados pronosticados por Snowflake ML."
+        tests:
+          - not_null
+      - name: max_expected
+        description: "Techo máximo esperado de viajes según el intervalo de confianza."
+      - name: min_expected
+        description: "Suelo mínimo esperado de viajes según el intervalo de confianza."
+
+  - name: rep_top_forecast_trips_monthly
+    description: "Vista final optimizada para herramientas de BI. Filtra únicamente el día del mes que tiene el pico más alto (Ranking 1) de viajes predichos para las ciudades de Manhattan y Jersey City."
+    columns:
+      - name: city
+        description: "Ciudad analizada."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments: 
+                values: ['Manhattan', 'Jersey City']
+      - name: nombre_mes
+        description: "Mes del registro récord."
+      - name: predicted_n_trips
+        description: "Volumen de viajes estimado para el día pico del mes."

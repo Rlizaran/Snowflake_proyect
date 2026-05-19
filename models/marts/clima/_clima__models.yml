@@ -47,14 +47,14 @@ models:
         description: 'Profundidad de nieve acumulada (mm). Elemento NOAA SNWD.'
         data_type: "number(8, 2)"
       - name: weather_category
-        description: 'Clasificacion del dia con precedencia: rainy (precip > 5mm) > snowy (snow > 0) > hot (tmax > 25C) > cold (tmax < 5C) > mild. La primera condicion verdadera gana.'
+        description: '{{ doc("weather_category_rules") }}'
         data_type: varchar
         data_tests:
           - accepted_values:
               arguments: { values: ['rainy','snowy','hot','cold','mild'] }
 
   - name: fct_noaa_corrections
-    description: 'SCD2 historico de observaciones NOAA (vigentes + reemplazadas). PK surrogate generado aqui.'
+    description: '{{ doc("scd2_lifecycle") }}'
     config:
       contract: { enforced: true }
     constraints:
@@ -147,7 +147,7 @@ models:
         data_type: float
 
   - name: dim_weather_element
-    description: 'Elementos meteo NOAA GHCN-Daily. Passthrough de slv_weather_element.'
+    description: '{{ doc("weather_elements") }}'
     config:
       contract: { enforced: true }
     constraints:
@@ -167,7 +167,7 @@ models:
         data_type: varchar
 
   - name: dim_quality_flag
-    description: 'Lookup q_flag NOAA + q_flag_category. Passthrough de slv_quality_flag.'
+    description: '{{ doc("q_flag_codes") }}'
     config:
       contract: { enforced: true }
     constraints:

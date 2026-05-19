@@ -11,17 +11,22 @@ seeds:
       Fuente unica de verdad para slv_weather_station.
     columns:
       - name: station_id
-        description: 'PK de la estacion'
+        description: 'PK de la estacion NOAA (formato USW#########).'
         data_tests:
           - unique
           - not_null
       - name: lat
+        description: 'Latitud de la estacion.'
       - name: lng
+        description: 'Longitud de la estacion.'
       - name: elevation_m
+        description: 'Elevacion sobre el nivel del mar (metros).'
       - name: state
-        description: 'Codigo del estado US (2 chars)'
+        description: 'Codigo del estado US (2 chars: NY, NJ, MA, ...).'
       - name: station_name
+        description: 'Nombre legible de la estacion.'
       - name: city
+        description: 'Ciudad asociada (texto libre desde el seed; no se usa directamente en silver).'
 
   - name: city_weather_station_map
     description: >
@@ -29,12 +34,12 @@ seeds:
       Editar este CSV para anadir nuevas ciudades al pipeline.
     columns:
       - name: project_city
-        description: 'Nombre de la ciudad CityBike (Manhattan, Jersey City, ...).'
+        description: 'Nombre de la ciudad CityBike (Manhattan, Jersey City, ...). Match exacto con stg_CityBike.city.'
         data_tests:
           - unique
           - not_null
       - name: station_weather_id
-        description: 'ID de la station NOAA asociada a la ciudad.'
+        description: 'ID de la station NOAA asociada a la ciudad (formato USW#########).'
         data_tests:
           - unique
           - not_null
