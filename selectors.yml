@@ -10,4 +10,15 @@ selectors:
         - exclude:
             - method: test_type
               value: unit
+  
+  - name: dbt-build
+    definition:
+      union:
+        - method: path
+          value: models
+        - exclude: 
+          - method: test_type
+            value: unit
+
+  
           
