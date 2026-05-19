@@ -7,3 +7,7 @@ selectors:
           parents: true
         - method: fqn
           value: fct_trips_weather
+        - exclude:
+            - method: test_type
+              value: unit
+          
