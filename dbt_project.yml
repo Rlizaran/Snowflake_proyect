@@ -19,7 +19,7 @@ quoting:
 # los directorios estándar)
 # ----------------------------------------------------------------------------
 
-model-paths:    ["models", "analyses/IA"]
+model-paths:    ["models"]
 analysis-paths: ["analyses"]
 test-paths:     ["tests"]
 seed-paths:     ["seeds"]
@@ -77,11 +77,6 @@ models:
       +database: "{{ env_var('DBT_ENVIRONMENTS', 'FAIL') }}_CITYBIKE_GOLD"
       +schema: ANALYTICS
       +materialized: table
-
-# ============================================================================
-# CONFIGURACIÓN DE Analitycs
-# ============================================================================
-
 
 # ============================================================================
 # CONFIGURACIÓN DE SEEDS
