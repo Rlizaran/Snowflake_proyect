@@ -1,10 +1,18 @@
 -- slv_station: estaciones unicas (NY + JC) con nombre y coords canonicos derivados de stg.
 -- Materializado table: el union all + group by + row_number sobre stg (millones de filas) es caro de recomputar en cada query.
 
-{{ config(materialized='table') }}
+{{ config(
+    materialized='incremental',
+    unique_key='station_id',
+    incremental_strategy='merge',
+    on_schema_change='append_new_columns'
+) }}
 
 with trips as (
     select * from {{ ref('stg_CityBike__citybike_trips') }}
+    {% if is_incremental() %}
+        where load_ts > (select coalesce(max(last_seen), '1900-01-01'::timestamp_ntz) from {{ this }})
+    {% endif %}
 ),
 
 all_stations_raw as (
@@ -51,6 +59,7 @@ select
     station_id,
     station_name as canonical_name,
     lat          as canonical_lat,
-    lng          as canonical_lng
+    lng          as canonical_lng,
+    last_seen
 from ranked_stations
 where rn = 1
