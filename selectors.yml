@@ -20,5 +20,13 @@ selectors:
           - method: test_type
             value: unit
 
+  - name: demo
+    definition:
+      union:
+        - method: path
+          value: models
+        - exclude: 
+          - method: fqn
+            value: test_citybike_partial_month_detection
+
   
-          
