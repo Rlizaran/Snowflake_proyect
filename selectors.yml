@@ -1,5 +1,6 @@
 selectors:
   - name: mantenimiento_noaa
+    description: 'fct_weather_daily actualiza desde los ultimos 7 dias de registro. Hacer dbt build --full-refresh'
     definition:
       union:
         - method: fqn
@@ -12,6 +13,7 @@ selectors:
               value: unit
   
   - name: dbt-build
+    description: 'Uso para PRO ya que no es necesario los unit test'
     definition:
       union:
         - method: path
@@ -21,6 +23,7 @@ selectors:
             value: unit
 
   - name: demo
+    description: 'Uso para demo, menos de 1000 rides, el test falla y rompe el dbt build'
     definition:
       union:
         - method: path
